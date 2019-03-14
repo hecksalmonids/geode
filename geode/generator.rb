@@ -80,7 +80,7 @@ module Generators
       when 'float' then "Float :#{name}"
       when 'date' then "Date :#{name}"
       when 'time' then "Time :#{name}"
-      when 'references' then "foreign_key :#{name.foreign_key}, :#{name.tableize.to_sym}"
+      when 'references' then "foreign_key :#{name.foreign_key}, :#{name.tableize}"
       end
     end
   end
