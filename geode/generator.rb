@@ -24,10 +24,11 @@ module Generators
 
   # Crystal generator class
   class CrystalGenerator < ObjectGenerator
-    def initialize(name, without_commands: false, without_events: false)
+    def initialize(name, without_commands: false, without_events: false, without_models: false)
       @crystal_name = name.camelize
       @filename = "#{name.underscore}.rb"
       @containers = {command: !without_commands, event: !without_events}
+      @models = !without_models
     end
 
     # Generates crystal file in the given directory; prints the file generation to console

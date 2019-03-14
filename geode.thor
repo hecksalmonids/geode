@@ -69,7 +69,7 @@ class Geode < Thor
   Generates a Geode crystal, model or migration.
 
   When generating a crystal, the format is 
-  'generate crystal [-m], [--main], [--without-commands], [--without-events] names...'
+  'generate crystal [-m], [--main], [--without-commands], [--without-events], [--without-models] names...'
   \x5When generating a model, the format is 'generate model name [fields...]'
   \x5When generating a migration, the format is 'generate migration [--with-up-down] name'
 
@@ -78,14 +78,16 @@ class Geode < Thor
   \x5The allowed field types are: #{Generators::ModelGenerator::VALID_FIELD_TYPES.join(', ')}
   LONG_DESC
   option :main, type:    :boolean,
-         aliases: '-m',
-         desc:    'Generates a crystal in the main folder instead of dev (crystal generation only)'
+                aliases: '-m',
+                desc:    'Generates a crystal in the main folder instead of dev (crystal generation only)'
   option :without_commands, type: :boolean,
-         desc: 'Generates a crystal without a CommandContainer (crystal generation only)'
+                            desc: 'Generates a crystal without a CommandContainer (crystal generation only)'
   option :without_events, type: :boolean,
-         desc: 'Generates a crystal without an EventContainer (crystal generation only)'
+                          desc: 'Generates a crystal without an EventContainer (crystal generation only)'
+  option :without_models, type: :boolean,
+                          desc: 'Generates a crystal without database model classes (crystal generation only)'
   option :with_up_down, type: :boolean,
-         desc: 'Generates a migration with up/down blocks instead of a change block (migration generation only)'
+                        desc: 'Generates a migration with up/down blocks instead of a change block (migration generation only)'
   def generate(type, *args)
     # Cases generation type
     case type
@@ -103,7 +105,8 @@ class Geode < Thor
         generator = Generators::CrystalGenerator.new(
             crystal_name,
             without_commands: options[:without_commands],
-            without_events: options[:without_events]
+            without_events: options[:without_events],
+            without_models: options[:without_models]
         )
         generator.generate_in(options[:main] ? 'app/main' : 'app/dev')
       end
@@ -145,6 +148,7 @@ class Geode < Thor
       raise Error, 'ERROR: Option -m, --main should not be given when generating a migration' if options[:main]
       raise Error, 'ERROR: Option --without-commands should not be given when generating a migration' if options[:without_commands]
       raise Error, 'ERROR: Option --without-events should not be given when generating a migration' if options[:without_events]
+      raise Error, 'ERROR: Option --without-models should not be given when generating a migration' if options[:without_models]
 
       # Validates that exactly one argument (the migration name) is given
       raise Error, 'ERROR: Migration name must be given' if args.size < 1
