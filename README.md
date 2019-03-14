@@ -55,6 +55,16 @@ and an up and down block when the `--with-up-down` option is provided.
 
 Unfortunately, it does not have Rails magic; it cannot guess the migration contents from the name.
 
+#### Renaming
+
+All of these can be renamed using `thor geode:rename {crystal|model|migration} OLD_NAME NEW_NAME`.
+
+Renaming a model has special behavior; renaming a model will create a migration that renames the model's database table.
+
+When renaming migrations, the name or version number can be provided as the `OLD_NAME` argument.
+
+Note that renaming a model does not update any references to it in crystals or lib scripts!
+
 #### Destruction
 
 All of these can also be destroyed using `thor geode:destroy {crystal|model|migration} NAMES`. 
@@ -143,6 +153,9 @@ The command `thor db:console` opens an IRB shell that has the database and model
 If the option `--load-only=one two three` is provided, only the given model classes will be loaded into the console.
 
 #### Resetting the database
-The command `thor db:reset` resets the entire database, recreating the tables from the schema at `db/schema.rb`.
+The command `thor db:reset` resets the entire database, recreating the tables from the schema at `db/schema.rb`. 
 
-This command erases all data from the database -- be very sure of what you are doing when running this command!
+If the option `--tables=one two three` is given, only the given tables are reset. If any other tables in the database
+are dependent on a table being reset, the command will fail unless these dependent tables are also being reset.
+
+This command erases data from the database -- be very sure of what you are doing when running this command!
