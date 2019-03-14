@@ -65,7 +65,7 @@ module Bot
   Models = Module.new
   Dir['app/models/*.rb'].each do |path|
     load path
-    puts "+ Loaded model class #{File.basename(path, '*.rb').camelize}"
+    puts "+ Loaded model class #{File.basename(path, '.*').camelize}"
   end
 
   puts 'Done.'
