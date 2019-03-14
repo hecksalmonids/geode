@@ -3,6 +3,7 @@ require 'bundler/setup'
 
 # Required gems and files across the CLI
 require 'thor'
+require 'irb'
 require 'sequel'
 require_relative 'geode/generator'
 Sequel.extension :inflector, :migration, :schema_dumper
@@ -54,7 +55,7 @@ class Geode < Thor
           raise Error, "ERROR: Multiple crystals with name #{crystal_name} found"
         else paths[0]
         end
-      end.flatten.join(',')
+      end.join(',')
     else
       ENV['CRYSTALS_TO_LOAD'] = Dir['app/main/*.rb'].join(',')
     end
@@ -367,6 +368,36 @@ class Database < Thor
 
       puts "+ Database rolled back to version #{version_number} (#{migration_name})"
     end
+  end
+
+  desc 'console [--load-only=one two three]', 'Load an IRB console that allows database interaction'
+  long_desc <<~LONG_DESC.strip
+  Loads an IRB console that allows interaction with the Geode's database and model classes.
+  \x5The Bot::Models module is included in the IRB shell; no need to call the full class name 
+  to work with a model class.
+
+  When --load-only is given, only the given model classes will be loaded.
+  LONG_DESC
+  option :load_only, type: :array,
+                     desc: 'Loads only the given model classes.'
+  def console
+    # Validates that all given models exist if load_only is given
+    if options[:load_only]
+      options[:load_only].each do |model_name|
+        if Dir['app/models/*.rb'].none? { |p| File.basename(p, '.*').camelize == model_name }
+          raise Error, "ERROR: Model #{model_name} not found"
+        end
+      end
+    end
+
+    # Defines MODELS_TO_LOAD environment variable
+    ENV['MODELS_TO_LOAD'] = if options[:load_only]
+                              options[:load_only].join(',')
+                            else Dir['app/models/*.rb'].map { |p| File.basename(p, '.*').camelize }.join(',')
+                            end
+
+    # Loads IRB console script
+    load 'geode/console.rb'
   end
 
   desc 'reset', 'Wipe the database and regenerate it using the current schema'
