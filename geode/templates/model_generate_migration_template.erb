@@ -1,0 +1,8 @@
+# Migration: <%= @migration_name %>
+Sequel.migration do
+  change do
+    create_table(:<%= @table_name %>) do
+<%= @columns.join("\n") %>
+    end
+  end
+end

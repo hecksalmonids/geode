@@ -1,0 +1,12 @@
+# Crystal: <%= @crystal_name %>
+
+
+# TODO Write what the crystal does here.
+module Bot::<%= @crystal_name %>
+<%= "  extend Discordrb::Commands::CommandContainer\n" if @containers[:command] -%>
+<%= "  extend Discordrb::EventContainer\n" if @containers[:event] -%>
+  include Bot::Models
+  
+  # Crystal code below:
+  
+end

@@ -1,0 +1,10 @@
+# Migration: <%= @migration_name %>
+Sequel.migration do
+  up do
+    drop_table(:<%= @table_name %>)
+  end
+
+  down do
+<%= @rollback_table %>
+  end
+end
