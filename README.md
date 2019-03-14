@@ -1,7 +1,7 @@
 # Geode: A Clunky Modular Bot Framework for Discordrb With a Database
 
 Geode is a modular bot framework I made for [discordrb](https://github.com/meew0/discordrb),
-built from [cluster](https://github.com/410757864530-dead-salmonids/cluster). It also includes 
+and is a modification of [cluster](https://github.com/410757864530-dead-salmonids/cluster). It includes 
 [SQLite](https://www.sqlite.org/index.html) database integration.
 
 I created Geode because I decided Cluster wasn't complicated enough already
