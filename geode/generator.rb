@@ -85,8 +85,26 @@ module Generators
     end
   end
 
+  # Migration generation class for migrations used to rename a model
+  class ModelRenameMigrationGenerator < ObjectGenerator
+    def initialize(old_name, new_name)
+      @old_table = old_name.tableize
+      @new_table = new_name.tableize
+      @migration_name = "Rename#{@old_table.camelize}TableTo#{@new_table.camelize}"
+      @filename = "#{Time.now.strftime("%Y%m%d%H%M%S")}_#{@migration_name.underscore}.rb"
+    end
+
+    # Generates a timestamped migration file in the given directory; prints the file generation to console
+    def generate_in(directory)
+      migration_path = File.expand_path("#{directory}/#{@filename}")
+      File.open(migration_path, 'w') { |f| f.write(render 'geode/templates/model_rename_migration_template.erb') }
+      relative_migration_path = Pathname.new(migration_path).relative_path_from(Pathname.pwd).to_s
+      puts "+ Generated migration #{@name} at #{relative_migration_path}"
+    end
+  end
+
   # Migration generation class for migrations used to destroy a model
-  class DestroyModelMigrationGenerator < ObjectGenerator
+  class ModelDestroyMigrationGenerator < ObjectGenerator
     def initialize(name, db)
       class << db
         include Sequel::SchemaDumper
@@ -131,7 +149,8 @@ module Generators
       class << db
         include Sequel::SchemaDumper
       end
-      @tables = db.tables.reject { |k| k == :schema_migrations }.map { |k| indent("db.#{db.dump_table_schema(k)}", 4) }
+      raw_tables = db.tables.reject { |k| k == :schema_migrations }.map { |k| db.dump_table_schema(k) }
+      @tables = raw_tables.map { |t| indent(t.sub('create_table', 'db.create_table?'), 4) }
     end
 
     # Generates schema from the given database at schema.rb in the given directory;

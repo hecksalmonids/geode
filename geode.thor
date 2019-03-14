@@ -31,12 +31,12 @@ class Geode < Thor
   LONG_DESC
   option :dev, type:    :boolean,
                aliases: '-d',
-               desc:    'Load dev crystals instead of main'
+               desc:    'Loads dev crystals instead of main'
   option :all, type:    :boolean,
                aliases: '-a',
-               desc:    'Load all crystals (main and dev)'
+               desc:    'Loads all crystals (main and dev)'
   option :load_only, type: :array,
-                     desc: 'Load only the given crystals (searching both main and dev)'
+                     desc: 'Loads only the given crystals (searching both main and dev)'
   def start
     # Validates that only one option is given
     raise Error, 'ERROR: Only one of -d, -a and --load-only can be given' if options.count { |_k, v| v } > 1
@@ -78,14 +78,14 @@ class Geode < Thor
   \x5The allowed field types are: #{Generators::ModelGenerator::VALID_FIELD_TYPES.join(', ')}
   LONG_DESC
   option :main, type:    :boolean,
-                aliases: '-m',
-                desc:    'Generate a crystal in the main folder instead of dev (crystal generation only)'
+         aliases: '-m',
+         desc:    'Generates a crystal in the main folder instead of dev (crystal generation only)'
   option :without_commands, type: :boolean,
-                            desc: 'Generate a crystal without a CommandContainer (crystal generation only)'
+         desc: 'Generates a crystal without a CommandContainer (crystal generation only)'
   option :without_events, type: :boolean,
-                          desc: 'Generate a crystal without an EventContainer (crystal generation only)'
+         desc: 'Generates a crystal without an EventContainer (crystal generation only)'
   option :with_up_down, type: :boolean,
-                        desc: 'Generate a migration with up/down blocks instead of a change block (migration generation only)'
+         desc: 'Generates a migration with up/down blocks instead of a change block (migration generation only)'
   def generate(type, *args)
     # Cases generation type
     case type
@@ -154,6 +154,84 @@ class Geode < Thor
       generator = Generators::MigrationGenerator.new(args[0], with_up_down: options[:with_up_down])
       generator.generate_in 'db/migrations'
 
+    else raise Error, 'ERROR: Type must be crystal, model or migration'
+    end
+  end
+
+  desc 'rename {crystal|model|migration} OLD_NAME NEW_NAME', 'Rename a Geode crystal, model or migration'
+  long_desc <<~LONG_DESC.strip
+  Renames a Geode crystal, model or migration.
+
+  When renaming a model, a new migration will be generated that renames the model's table.
+  \x5When renaming a migration, provide either the migration's name or version number for the old name.
+
+  Note: Renaming a model does not update any references to the model within crystals or lib scripts!
+  LONG_DESC
+  def rename(type, old_name, new_name)
+    # Cases rename type
+    case type
+    when 'crystal'
+      # Validates that crystal with given name exists
+      unless (old_path = (Dir['app/dev/*.rb'] + Dir['app/main/*.rb']).find { |p| File.basename(p, '.*').camelize == old_name })
+        raise Error, "ERROR: Crystal #{old_name} not found"
+      end
+
+      new_path = "#{File.dirname(old_path)}/#{new_name.underscore}.rb"
+
+      # Writes content of old crystal file to new, replacing all instances of old name with new
+      File.open(new_path, 'w') do |file|
+        file.write(File.read(old_path).gsub(old_name, new_name.camelize))
+      end
+
+      # Deletes old file
+      File.delete(old_path)
+
+      puts "= Renamed crystal #{old_name} to #{new_name} at #{new_path}"
+
+    when 'model'
+      # Validates that model with given name exists
+      unless (old_path = Dir['app/models/*.rb'].find { |p| File.basename(p, '.*').camelize == old_name })
+        raise Error, "ERROR: Model #{old_name} not found"
+      end
+
+      new_path = "app/models/#{new_name.underscore}.rb"
+
+      # Writes content of old model file to new, replacing all instances of old name with new
+      File.open(new_path, 'w') do |file|
+        file.write(File.read(old_path).gsub(old_name, new_name.camelize))
+      end
+
+      # Deletes old file
+      File.delete(old_path)
+
+      puts "= Renamed model #{old_name} to #{new_name} at #{new_path}"
+
+      # Generates migration renaming old model's table to new
+      generator = ModelRenameMigrationGenerator.new(old_name, new_name)
+      generator.generate_in('db/migrations')
+
+    when 'migration'
+      # Validates that migration with given name or version number exists
+      old_path = Dir['db/migrations/*.rb'].find do |path|
+        filename = File.basename(path)
+        filename.to_i == old_name.to_i || filename[15..-4].camelize == old_name
+      end
+      raise Error, "ERROR: Migration #{old_name} not found" unless old_path
+
+      old_migration_name = File.basename(old_path)[15..-4].camelize
+      migration_version = File.basename(old_path).to_i
+      new_path = "db/migrations/#{migration_version}_#{new_name.underscore}.rb"
+
+      # Writes content of old migration file to new, replacing all instances of old name with new
+      File.open(new_path, 'w') do |file|
+        file.write(File.read(old_path).gsub(old_migration_name, new_name.camelize))
+      end
+
+      # Deletes old file
+      File.delete(old_path)
+
+      puts "= Renamed migration version #{migration_version} (#{old_migration_name}) to #{new_name} at #{new_path}"
+
     else raise Error, 'ERROR: Generation type must be crystal, model or migration'
     end
   end
@@ -166,8 +244,7 @@ class Geode < Thor
   When destroying a model, the migration that created its table and every migration afterward will be deleted 
   provided the model's table does not already exist in the database; otherwise, a new migration will be created 
   that drops the model's table.
-
-  When destroying migrations, provide either the version number or name.
+  \x5When destroying migrations, provide either the version number or name.
 
   Note: Destroying migrations is unsafe; avoid doing it unless you are sure of what you are doing.
   LONG_DESC
@@ -211,7 +288,7 @@ class Geode < Thor
       Sequel.sqlite(ENV['DB_PATH']) do |db|
         # If model's table exists in the database, generates new migration dropping the model's table
         if db.table_exists?(model_name.tableize.to_sym)
-          generator = Generators::DestroyModelMigrationGenerator.new(model_name, db)
+          generator = Generators::ModelDestroyMigrationGenerator.new(model_name, db)
           generator.generate_in('db/migrations')
 
         # Otherwise, deletes the migration adding the model's table and every migration that follows
@@ -253,6 +330,8 @@ class Geode < Thor
         File.delete(migration_path)
         puts "- Deleted migration version #{migration_version} (#{migration_name})"
       end
+
+    else raise Error, 'ERROR: Generation type must be crystal, model or migration'
     end
   end
 end
@@ -279,10 +358,10 @@ class Database < Thor
   migrations behind the latest the database is currently on.
   LONG_DESC
   option :version, type: :numeric,
-                   desc: 'Migrate the database to the given version'
+                   desc: 'Migrates the database to the given version'
   option :status, type:    :boolean,
                   aliases: '-s',
-                  desc:    'Check the current status of migrations'
+                  desc:    'Checks the current status of migrations'
   def migrate
     # Loads the database
     Sequel.sqlite(ENV['DB_PATH']) do |db|
@@ -324,13 +403,17 @@ class Database < Thor
 
       # If no options are given, migrate to latest and regenerate schema:
       else
-        Sequel::Migrator.run(db, 'db/migrations', options)
-        filename = db[:schema_migrations].order(:filename).last[:filename]
-        migration_name = filename[15..-4].camelize
-        version_number = filename.to_i
-        generator = Generators::SchemaGenerator.new(db)
-        generator.generate_in('db')
-        puts "+ Database migrated to latest version #{version_number} (#{migration_name})"
+        if Sequel::Migrator.is_current?(db, 'db/migrations')
+          puts 'Database is on latest migration'
+        else
+          Sequel::Migrator.run(db, 'db/migrations', options)
+          filename = db[:schema_migrations].order(:filename).last[:filename]
+          migration_name = filename[15..-4].camelize
+          version_number = filename.to_i
+          generator = Generators::SchemaGenerator.new(db)
+          generator.generate_in('db')
+          puts "+ Database migrated to latest version #{version_number} (#{migration_name})"
+        end
       end
     end
   end
@@ -343,7 +426,7 @@ class Database < Thor
   migrations already run.
   LONG_DESC
   option :step, type: :numeric,
-                desc: 'Revert the given number of migrations'
+                desc: 'Reverts the given number of migrations'
   def rollback
     # Loads the database
     Sequel.sqlite(ENV['DB_PATH']) do |db|
@@ -417,30 +500,63 @@ class Database < Thor
   long_desc <<~LONG_DESC.strip
   Wipes the database and regenerates it using the current schema. Does not affect the schema_migrations table.
 
-  THIS COMMAND WIPES ALL STORED DATA! Do not run this command unless you are sure of what you're doing.
+  Do not run this command unless you are sure of what you're doing.
+
+  If the option --tables=one two three is given, only the given tables will be reset, provided any tables that
+  are dependent on them are given as option arguments to be reset as well.
   LONG_DESC
+  option :tables, type: :array,
+                  desc: 'Reset only the given tables'
   def reset
-    # Verifies that user wants to reset database
-    puts 'WARNING: THIS COMMAND WIPES ALL STORED DATA!'
-    print 'Are you sure you want to reset? [y/n] '
-    response = STDIN.gets.chomp
-    until %w(y n).include? response.downcase
-      print 'Please enter a valid response. '
+    # Loads the database
+    Sequel.sqlite(ENV['DB_PATH']) do |db|
+      # Validates that if tables option is given, all given tables exist, none of them are schema_migrations, and
+      # either have no dependent tables or all dependent tables are included in the arguments
+      if options[:tables]
+        options[:tables].each do |table_name|
+          raise Error, 'ERROR: Table schema_migrations cannot be reset' if table_name == 'schema_migrations'
+
+          if db.table_exists?(table_name.to_sym)
+            dependent_tables = db.tables.select do |key|
+              db.foreign_key_list(key).any? { |fk| fk[:table] == table_name.to_sym }
+            end
+
+            unless dependent_tables.all? { |k| options[:tables].include? k.to_s }
+              raise Error, "ERROR: Table #{table_name} has dependencies"
+            end
+          else
+            raise Error, "ERROR: Table #{table_name} not found"
+          end
+        end
+      end
+
+      tables_to_reset = options[:tables] ? options[:tables].map(&:to_sym) : db.tables - [:schema_migrations]
+
+      # Verifies that user wants to reset database
+      puts 'WARNING: THIS COMMAND WILL RESULT IN LOSS OF DATA!'
+      print 'Are you sure you want to reset? [y/n] '
       response = STDIN.gets.chomp
-    end
+      until %w(y n).include? response.downcase
+        print 'Please enter a valid response. '
+        response = STDIN.gets.chomp
+      end
 
-    # Resets database if user has confirmed
-    if response == 'y'
-      Sequel.sqlite(ENV['DB_PATH']) do |db|
-        # Drops all dependent tables
-        db.drop_table(*(db.tables.select { |k| db.foreign_key_list(k).any? }))
+      # If user has confirmed:
+      if response == 'y'
+        dependent_tables = tables_to_reset.select { |k| db.foreign_key_list(k).any? }
+        remaining_tables = tables_to_reset - dependent_tables
 
-        # Drops all remaining tables
-        db.drop_table(*(db.tables - [:schema_migrations]))
+        # Drops tables, beginning with dependent tables
+        db.drop_table(*dependent_tables)
+        db.drop_table(*remaining_tables)
 
         # Loads schema
         load 'db/schema.rb'
-        puts '- Database regenerated from scratch using current schema db/schema.rb'
+        if options[:tables]
+          puts '- Given tables regenerated from scratch using current schema db/schema.rb'
+        else
+          puts '- Database regenerated from scratch using current schema db/schema.rb'
+        end
       end
     end
   end
