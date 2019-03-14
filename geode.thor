@@ -34,8 +34,8 @@ class Geode < Thor
   option :all, type:    :boolean,
                aliases: '-a',
                desc:    'Loads all crystals (main and dev)'
-  option :load_only, type:    :array,
-                     desc:    'Loads only the given crystals (searching both main and dev)'
+  option :load_only, type: :array,
+                     desc: 'Loads only the given crystals (searching both main and dev)'
   def start
     # Validates that only one option is given
     raise Error, 'ERROR: Only one of -d, -a and --load-only can be given' if options.count { |_k, v| v } > 1
