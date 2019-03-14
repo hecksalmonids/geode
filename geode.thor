@@ -31,12 +31,12 @@ class Geode < Thor
   LONG_DESC
   option :dev, type:    :boolean,
                aliases: '-d',
-               desc:    'Loads dev crystals instead of main'
+               desc:    'Load dev crystals instead of main'
   option :all, type:    :boolean,
                aliases: '-a',
-               desc:    'Loads all crystals (main and dev)'
+               desc:    'Load all crystals (main and dev)'
   option :load_only, type: :array,
-                     desc: 'Loads only the given crystals (searching both main and dev)'
+                     desc: 'Load only the given crystals (searching both main and dev)'
   def start
     # Validates that only one option is given
     raise Error, 'ERROR: Only one of -d, -a and --load-only can be given' if options.count { |_k, v| v } > 1
@@ -78,14 +78,14 @@ class Geode < Thor
   \x5The allowed field types are: #{Generators::ModelGenerator::VALID_FIELD_TYPES.join(', ')}
   LONG_DESC
   option :main, type:    :boolean,
-         aliases: '-m',
-         desc:    'Generates a crystal in the main folder instead of dev (crystal generation only)'
+                aliases: '-m',
+                desc:    'Generate a crystal in the main folder instead of dev (crystal generation only)'
   option :without_commands, type: :boolean,
-         desc: 'Generates a crystal without a CommandContainer (crystal generation only)'
+                            desc: 'Generate a crystal without a CommandContainer (crystal generation only)'
   option :without_events, type: :boolean,
-         desc: 'Generates a crystal without an EventContainer (crystal generation only)'
+                          desc: 'Generate a crystal without an EventContainer (crystal generation only)'
   option :with_up_down, type: :boolean,
-         desc: 'Generates a migration with up/down blocks instead of a change block (migration generation only)'
+                        desc: 'Generate a migration with up/down blocks instead of a change block (migration generation only)'
   def generate(type, *args)
     # Cases generation type
     case type
@@ -279,10 +279,10 @@ class Database < Thor
   migrations behind the latest the database is currently on.
   LONG_DESC
   option :version, type: :numeric,
-                   desc: 'Migrates the database to the given version'
+                   desc: 'Migrate the database to the given version'
   option :status, type:    :boolean,
                   aliases: '-s',
-                  desc:    'Checks the current status of migrations'
+                  desc:    'Check the current status of migrations'
   def migrate
     # Loads the database
     Sequel.sqlite(ENV['DB_PATH']) do |db|
@@ -343,7 +343,7 @@ class Database < Thor
   migrations already run.
   LONG_DESC
   option :step, type: :numeric,
-                desc: 'Reverts the given number of migrations'
+                desc: 'Revert the given number of migrations'
   def rollback
     # Loads the database
     Sequel.sqlite(ENV['DB_PATH']) do |db|
@@ -377,10 +377,21 @@ class Database < Thor
   to work with a model class.
 
   When --load-only is given, only the given model classes will be loaded.
+  \x5When --without-models is given, no models will be loaded.
   LONG_DESC
   option :load_only, type: :array,
-                     desc: 'Loads only the given model classes.'
+                     desc: 'Load only the given model classes'
+  option :without_models, type: :boolean,
+                          desc: 'Skip loading models and only loads the database'
   def console
+    # Validates that only one option is given at a time
+    if options[:load_only] && options[:without_models]
+      raise Error, 'ERROR: Only one of --load-only and --without-models can be given at a time'
+    end
+
+    # Defines WITHOUT_MODELS environment variable if without_models is given
+    ENV['WITHOUT_MODELS'] = 'TRUE' if options[:without_models]
+
     # Validates that all given models exist if load_only is given
     if options[:load_only]
       options[:load_only].each do |model_name|
@@ -391,7 +402,9 @@ class Database < Thor
     end
 
     # Defines MODELS_TO_LOAD environment variable
-    ENV['MODELS_TO_LOAD'] = if options[:load_only]
+    ENV['MODELS_TO_LOAD'] = if options[:without_models]
+                              nil
+                            elsif options[:load_only]
                               options[:load_only].join(',')
                             else Dir['app/models/*.rb'].map { |p| File.basename(p, '.*').camelize }.join(',')
                             end
@@ -419,7 +432,13 @@ class Database < Thor
     # Resets database if user has confirmed
     if response == 'y'
       Sequel.sqlite(ENV['DB_PATH']) do |db|
-        db.tables.each { |k| db.drop_table(k) unless k == :schema_migrations }
+        # Drops all dependent tables
+        db.drop_table(*(db.tables.select { |k| db.foreign_key_list(k).any? }))
+
+        # Drops all remaining tables
+        db.drop_table(*(db.tables - [:schema_migrations]))
+
+        # Loads schema
         load 'db/schema.rb'
         puts '- Database regenerated from scratch using current schema db/schema.rb'
       end
