@@ -35,7 +35,8 @@ crystal with the given name will be generated in `app/dev`. To generate a crysta
 `--main` (`-m` for short).
 
 To generate a crystal without events, add the option `--without-events`. Similarly, to generate a crystal without
-commands, add the option `--without-commands`.
+commands, add the option `--without-commands`. To generate a crystal without database model classes, add the option
+`--without-models`.
 
 All crystals include the `Bot::Models` module, which contains the database's model classes.
 
