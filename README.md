@@ -37,7 +37,7 @@ crystal with the given name will be generated in `app/dev`. To generate a crysta
 To generate a crystal without events, add the option `--without-events`. Similarly, to generate a crystal without
 commands, add the option `--without-commands`.
 
-All crystals include the Bot::Models module, which contains the Geode's database model classes.
+All crystals include the `Bot::Models` module, which contains the database's model classes.
 
 #### Generating a model
 
