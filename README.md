@@ -130,8 +130,17 @@ Running `thor db:migrate -s` displays the migration status; the information disp
 has run and whether the database is up to date on migrations or not.
 
 #### Rolling back migrations
-The command `thor db:rollback` rolls back a single migration. If the option `--step=N` is provided, it instead rolls back N
-migrations, provided N is not greater than the total number of migrations that have run.
+
+The command `thor db:rollback` rolls back a single migration. 
+
+If the option `--step=N` is provided, it instead rolls back N migrations, provided N is not greater than the total
+number of migrations that have run.
+
+#### Interacting with the database
+
+The command `thor db:console` opens an IRB shell that has the database and model classes loaded to interact with. 
+
+If the option `--load-only=one two three` is provided, only the given model classes will be loaded into the console.
 
 #### Resetting the database
 The command `thor db:reset` resets the entire database, recreating the tables from the schema at `db/schema.rb`.
