@@ -24,10 +24,10 @@ class Geode < Thor
   map %w(-r -s) => :start
   desc 'start [-d], [-a], [--load-only=one two three]', 'Load crystals and start the bot'
   long_desc <<~LONG_DESC.strip
-  Loads crystals and starts the bot. With no options, this loads only the crystals in main.
+    Loads crystals and starts the bot. With no options, this loads only the crystals in main.
   
-  Note: If two crystals with the same name are found by --load-only, an error will be thrown as crystals must
-  have unique names.
+    Note: If two crystals with the same name are found by --load-only, an error will be thrown as crystals must
+    have unique names.
   LONG_DESC
   option :dev, type:    :boolean,
                aliases: '-d',
@@ -66,16 +66,16 @@ class Geode < Thor
 
   desc 'generate {crystal|model|migration} ARGS', 'Generate a Geode crystal, model or migration'
   long_desc <<~LONG_DESC.strip
-  Generates a Geode crystal, model or migration.
+    Generates a Geode crystal, model or migration.
 
-  When generating a crystal, the format is 
-  'generate crystal [-m], [--main], [--without-commands], [--without-events], [--without-models] names...'
-  \x5When generating a model, the format is 'generate model name [fields...]'
-  \x5When generating a migration, the format is 'generate migration [--with-up-down] name'
+    When generating a crystal, the format is 
+    'generate crystal [-m], [--main], [--without-commands], [--without-events], [--without-models] names...'
+    \x5When generating a model, the format is 'generate model name [fields...]'
+    \x5When generating a migration, the format is 'generate migration [--with-up-down] name'
 
-  If a model is being generated, the model's fields should be included in the format 'name:type'
-  (i.e. generate model name:string number:integer), similar to Rails.
-  \x5The allowed field types are: #{Generators::ModelGenerator::VALID_FIELD_TYPES.join(', ')}
+    If a model is being generated, the model's fields should be included in the format 'name:type'
+    (i.e. generate model name:string number:integer), similar to Rails.
+    \x5The allowed field types are: #{Generators::ModelGenerator::VALID_FIELD_TYPES.join(', ')}
   LONG_DESC
   option :main, type:    :boolean,
                 aliases: '-m',
@@ -164,12 +164,12 @@ class Geode < Thor
 
   desc 'rename {crystal|model|migration} OLD_NAME NEW_NAME', 'Rename a Geode crystal, model or migration'
   long_desc <<~LONG_DESC.strip
-  Renames a Geode crystal, model or migration.
+    Renames a Geode crystal, model or migration.
 
-  When renaming a model, a new migration will be generated that renames the model's table.
-  \x5When renaming a migration, provide either the migration's name or version number for the old name.
+    When renaming a model, a new migration will be generated that renames the model's table.
+    \x5When renaming a migration, provide either the migration's name or version number for the old name.
 
-  Note: Renaming a model does not update any references to the model within crystals or lib scripts!
+    Note: Renaming a model does not update any references to the model within crystals or lib scripts!
   LONG_DESC
   def rename(type, old_name, new_name)
     # Cases rename type
@@ -242,15 +242,15 @@ class Geode < Thor
 
   desc 'destroy {crystal|model|migration} NAME(S)', 'Destroy Geode crystals, models or migrations'
   long_desc <<~LONG_DESC.strip
-  Destroys a Geode crystal, model or migration. 
-  Destruction of models must be done one at a time; however multiple crystals or migrations may be deleted at a time.
+    Destroys a Geode crystal, model or migration. 
+    Destruction of models must be done one at a time; however multiple crystals or migrations may be deleted at a time.
 
-  When destroying a model, the migration that created its table and every migration afterward will be deleted 
-  provided the model's table does not already exist in the database; otherwise, a new migration will be created 
-  that drops the model's table.
-  \x5When destroying migrations, provide either the version number or name.
+    When destroying a model, the migration that created its table and every migration afterward will be deleted 
+    provided the model's table does not already exist in the database; otherwise, a new migration will be created 
+    that drops the model's table.
+    \x5When destroying migrations, provide either the version number or name.
 
-  Note: Destroying migrations is unsafe; avoid doing it unless you are sure of what you are doing.
+    Note: Destroying migrations is unsafe; avoid doing it unless you are sure of what you are doing.
   LONG_DESC
   def destroy(type, *args)
     # Validates that arguments have been given
@@ -354,12 +354,12 @@ class Database < Thor
 
   desc 'migrate [--version=N], [-s]', "Migrate this Geode's database or display migration status"
   long_desc <<~LONG_DESC.strip
-  Migrates this Geode's database, or displays migration status. With no options, the database is migrated to the latest.
+    Migrates this Geode's database, or displays migration status. With no options, the database is migrated to the latest.
 
-  When --version is specified, the number given should be the timestamp of the migration.
+    When --version is specified, the number given should be the timestamp of the migration.
 
-  When displaying migration status with -s, the current migration will be displayed along with how many 
-  migrations behind the latest the database is currently on.
+    When displaying migration status with -s, the current migration will be displayed along with how many 
+    migrations behind the latest the database is currently on.
   LONG_DESC
   option :version, type: :numeric,
                    desc: 'Migrates the database to the given version'
@@ -424,10 +424,10 @@ class Database < Thor
 
   desc 'rollback [--step=N]', 'Revert migrations from the database'
   long_desc <<~LONG_DESC.strip
-  Reverts a number of migrations from the database. With no options, only one migration is rolled back.
+    Reverts a number of migrations from the database. With no options, only one migration is rolled back.
 
-  --step will throw an error if the number of migrations to be rolled back is greater than the number of
-  migrations already run.
+    --step will throw an error if the number of migrations to be rolled back is greater than the number of
+    migrations already run.
   LONG_DESC
   option :step, type: :numeric,
                 desc: 'Reverts the given number of migrations'
@@ -459,12 +459,12 @@ class Database < Thor
 
   desc 'console [--load-only=one two three]', 'Load an IRB console that allows database interaction'
   long_desc <<~LONG_DESC.strip
-  Loads an IRB console that allows interaction with the Geode's database and model classes.
-  \x5The Bot::Models module is included in the IRB shell; no need to call the full class name 
-  to work with a model class.
+    Loads an IRB console that allows interaction with the Geode's database and model classes.
+    \x5The Bot::Models module is included in the IRB shell; no need to call the full class name 
+    to work with a model class.
 
-  When --load-only is given, only the given model classes will be loaded.
-  \x5When --without-models is given, no models will be loaded.
+    When --load-only is given, only the given model classes will be loaded.
+    \x5When --without-models is given, no models will be loaded.
   LONG_DESC
   option :load_only, type: :array,
                      desc: 'Load only the given model classes'
@@ -502,12 +502,12 @@ class Database < Thor
 
   desc 'reset', 'Wipe the database and regenerate it using the current schema'
   long_desc <<~LONG_DESC.strip
-  Wipes the database and regenerates it using the current schema. Does not affect the schema_migrations table.
+    Wipes the database and regenerates it using the current schema. Does not affect the schema_migrations table.
 
-  Do not run this command unless you are sure of what you're doing.
+    Do not run this command unless you are sure of what you're doing.
 
-  If the option --tables=one two three is given, only the given tables will be reset, provided any tables that
-  are dependent on them are given as option arguments to be reset as well.
+    If the option --tables=one two three is given, only the given tables will be reset, provided any tables that
+    are dependent on them are given as option arguments to be reset as well.
   LONG_DESC
   option :tables, type: :array,
                   desc: 'Reset only the given tables'
