@@ -19,9 +19,9 @@ unless ENV['WITHOUT_MODELS']
                    singleton = true
                    "app/models/#{model_name.underscore}_singleton.rb"
                  end
-    if ()
+    if model_path
       [model_name.camelize, path, singleton]
-    else raise Error, "ERROR: Model #{model_name.camelize} not found"
+    else raise ArgumentError, "ERROR: Model #{model_name.camelize} not found"
     end
   end
   models_to_load.each do |model_name, path, singleton|
