@@ -511,8 +511,9 @@ class Database < Thor
     # Validates that all given models exist if load_only is given
     if options[:load_only]
       options[:load_only].each do |model_name|
-        if Dir['app/models/*.rb'].none? { |p| File.basename(p, '.*').camelize == model_name }
-          raise Error, "ERROR: Model #{model_name} not found"
+        unless File.exists?("app/models/#{model_name.underscore}.rb") ||
+               File.exists?("app/models/#{model_name.underscore}_singleton.rb")
+          raise Error, "ERROR: Model #{model_name.camelize} not found"
         end
       end
     end
@@ -522,10 +523,18 @@ class Database < Thor
                               nil
                             elsif options[:load_only]
                               options[:load_only].join(',')
-                            else Dir['app/models/*.rb'].map { |p| File.basename(p, '.*').camelize }.join(',')
+                            else
+                              Dir['app/models/*.rb'].map do |path|
+                                if path.include? '_singleton.rb'
+                                  puts File.basename(path, '.*').sub('_singleton', '').camelize
+                                  File.basename(path, '.*').sub('_singleton', '').camelize
+                                else
+                                  File.basename(path, '.*').camelize
+                                end
+                              end.join(',')
                             end
 
-    # Loads IRB console script
+    # Loads IRB console script with error rescuing
     load 'geode/console.rb'
   end
 
