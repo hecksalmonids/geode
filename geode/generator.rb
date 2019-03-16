@@ -43,7 +43,7 @@ module Generators
   # Model generator class
   class ModelGenerator < ObjectGenerator
     # Array of valid field types
-    VALID_FIELD_TYPES = %w(primary_key integer string text boolean float date time references)
+    VALID_FIELD_TYPES = %w(primary_key integer string text boolean float date time references references_singleton)
 
     def initialize(name, fields, singleton: false)
       @model_name = name.camelize
@@ -84,6 +84,7 @@ module Generators
       when 'date' then "Date :#{name}"
       when 'time' then "Time :#{name}"
       when 'references' then "foreign_key :#{name.foreign_key}, :#{name.tableize}"
+      when 'references_singleton' then "foreign_key :#{name.foreign_key}, :#{name.underscore}"
       end
     end
   end
