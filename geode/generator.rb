@@ -121,7 +121,7 @@ module Generators
       migration_path = File.expand_path("#{directory}/#{@filename}")
       File.open(migration_path, 'w') { |f| f.write(render 'geode/templates/model_destroy_migration_template.erb') }
       relative_migration_path = Pathname.new(migration_path).relative_path_from(Pathname.pwd).to_s
-      puts "+ Generated migration #{@name} at #{relative_migration_path}"
+      puts "+ Generated migration #{@migration_name} at #{relative_migration_path}"
     end
   end
 
