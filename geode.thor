@@ -70,12 +70,14 @@ class Geode < Thor
 
     When generating a crystal, the format is 
     'generate crystal [-m], [--main], [--without-commands], [--without-events], [--without-models] names...'
-    \x5When generating a model, the format is 'generate model name [fields...]'
+    \x5When generating a model, the format is 'generate model name [--singleton] [fields...]'
     \x5When generating a migration, the format is 'generate migration [--with-up-down] name'
 
     If a model is being generated, the model's fields should be included in the format 'name:type'
     (i.e. generate model name:string number:integer), similar to Rails.
     \x5The allowed field types are: #{Generators::ModelGenerator::VALID_FIELD_TYPES.join(', ')}
+    \x5The --singleton option allows you to generate a singleton model class, which will create a
+    table with only a single entry that can be retrieved using 'ModelClassName.instance'.
   LONG_DESC
   option :main, type:    :boolean,
                 aliases: '-m',
@@ -86,13 +88,16 @@ class Geode < Thor
                           desc: 'Generates a crystal without an EventContainer (crystal generation only)'
   option :without_models, type: :boolean,
                           desc: 'Generates a crystal without database model classes (crystal generation only)'
+  option :singleton, type: :boolean,
+                     desc: 'Generates a singleton model class instead of the standard (model generation only)'
   option :with_up_down, type: :boolean,
                         desc: 'Generates a migration with up/down blocks instead of a change block (migration generation only)'
   def generate(type, *args)
     # Cases generation type
     case type
     when 'crystal'
-      # Validates that --with-up-down is not given when a crystal is being generated
+      # Validates that no invalid options are given when a crystal is being generated
+      raise Error, 'ERROR: Option --singleton should not be given when generating a crystal' if options[:singleton]
       raise Error, 'ERROR: Option --with-up-down should not be given when generating a crystal' if options[:with_up_down]
 
       # Validates that both of --without-events and --without-commands are not given
@@ -112,8 +117,12 @@ class Geode < Thor
       end
 
     when 'model'
-      # Validates that none of the options are given when a model is being generated
-      raise Error, 'ERROR: No options should be given when generating a model' unless options.empty?
+      # Validates that no invalid option is given when generating a model
+      raise Error, 'ERROR: Option -m, --main should not be given when generating a model' if options[:main]
+      raise Error, 'ERROR: Option --without-commands should not be given when generating a model' if options[:without_commands]
+      raise Error, 'ERROR: Option --without-events should not be given when generating a model' if options[:without_events]
+      raise Error, 'ERROR: Option --without-models should not be given when generating a model' if options[:without_models]
+      raise Error, 'ERROR: Option --with-up-down should not be given when generating a model' if options[:with_up_down]
 
       name = args[0]
       fields = args[1..-1]
@@ -139,8 +148,8 @@ class Geode < Thor
         fields = []
       end
 
-      # Generates model
-      generator = Generators::ModelGenerator.new(name, fields)
+      # Generates model (either standard or singleton)
+      generator = Generators::ModelGenerator.new(name, fields, singleton: options[:singleton])
       generator.generate_in 'app/models', 'db/migrations'
 
     when 'migration'
@@ -149,6 +158,7 @@ class Geode < Thor
       raise Error, 'ERROR: Option --without-commands should not be given when generating a migration' if options[:without_commands]
       raise Error, 'ERROR: Option --without-events should not be given when generating a migration' if options[:without_events]
       raise Error, 'ERROR: Option --without-models should not be given when generating a migration' if options[:without_models]
+      raise Error, 'ERROR: Option --singleton should not be given when generating a migration' if options[:singleton]
 
       # Validates that exactly one argument (the migration name) is given
       raise Error, 'ERROR: Migration name must be given' if args.size < 1
@@ -193,34 +203,44 @@ class Geode < Thor
       puts "= Renamed crystal #{old_name} to #{new_name} at #{new_path}"
 
     when 'model'
+      old_path = if File.exists? "app/models/#{old_name.underscore}.rb"
+                   singleton = false
+                   "app/models/#{old_name.underscore}.rb"
+                 elsif File.exists? "app/models/#{old_name.underscore}_singleton.rb"
+                   singleton = true
+                   "app/models/#{old_name.underscore}_singleton.rb"
+                 end
+
       # Validates that model with given name exists
-      unless (old_path = Dir['app/models/*.rb'].find { |p| File.basename(p, '.*').camelize == old_name })
+      unless old_path
         raise Error, "ERROR: Model #{old_name} not found"
       end
 
-      new_path = "app/models/#{new_name.underscore}.rb"
+      new_path = singleton ? "app/models/#{new_name.underscore}_singleton.rb" : "app/models/#{new_name.underscore}.rb"
 
-      # Writes content of old model file to new, replacing all instances of old name with new
+      # Writes content of old model file to new, replacing all instances of old name (and table if singleton) with new
       File.open(new_path, 'w') do |file|
-        file.write(File.read(old_path).gsub(old_name, new_name.camelize))
+        new_content = File.read(old_path).gsub(old_name.camelize, new_name.camelize)
+        new_content = new_content.gsub(":#{old_name.underscore}", ":#{new_name.underscore}") if singleton
+        file.write new_content
       end
 
       # Deletes old file
       File.delete(old_path)
 
-      puts "= Renamed model #{old_name} to #{new_name} at #{new_path}"
+      puts "= Renamed model #{old_name.camelize} to #{new_name.camelize} at #{new_path}"
 
       # Generates migration renaming old model's table to new
-      generator = ModelRenameMigrationGenerator.new(old_name, new_name)
+      generator = Generators::ModelRenameMigrationGenerator.new(old_name, new_name, singleton)
       generator.generate_in('db/migrations')
 
     when 'migration'
       # Validates that migration with given name or version number exists
       old_path = Dir['db/migrations/*.rb'].find do |path|
         filename = File.basename(path)
-        filename.to_i == old_name.to_i || filename[15..-4].camelize == old_name
+        filename.to_i == old_name.to_i || filename[15..-4].camelize == old_name.camelize
       end
-      raise Error, "ERROR: Migration #{old_name} not found" unless old_path
+      raise Error, "ERROR: Migration #{old_name.camelize} not found" unless old_path
 
       old_migration_name = File.basename(old_path)[15..-4].camelize
       migration_version = File.basename(old_path).to_i
@@ -234,7 +254,7 @@ class Geode < Thor
       # Deletes old file
       File.delete(old_path)
 
-      puts "= Renamed migration version #{migration_version} (#{old_migration_name}) to #{new_name} at #{new_path}"
+      puts "= Renamed migration version #{migration_version} (#{old_migration_name}) to #{new_name.camelize} at #{new_path}"
 
     else raise Error, 'ERROR: Generation type must be crystal, model or migration'
     end
@@ -280,25 +300,34 @@ class Geode < Thor
       raise Error, 'ERROR: Only one model can be deleted at a time' unless args.size == 1
 
       model_name = args[0]
+      model_path = if File.exists? "app/models/#{model_name.underscore}.rb"
+                   singleton = false
+                   "app/models/#{model_name.underscore}.rb"
+                 elsif File.exists? "app/models/#{model_name.underscore}_singleton.rb"
+                   singleton = true
+                   "app/models/#{model_name.underscore}_singleton.rb"
+                 end
 
       # Validates that model exists
-      raise Error, "ERROR: Model #{model_name} not found" unless File.exists?("app/models/#{model_name.underscore}.rb")
+      raise Error, "ERROR: Model #{model_name} not found" unless model_path
+
+      table_name = singleton ? model_name.underscore : model_name.tableize
 
       # Deletes model, printing deletion to console
-      File.delete("app/models/#{model_name.underscore}.rb")
+      File.delete model_path
       puts "- Deleted model file for model #{model_name}"
 
       # Loads the database
       Sequel.sqlite(ENV['DB_PATH']) do |db|
         # If model's table exists in the database, generates new migration dropping the model's table
-        if db.table_exists?(model_name.tableize.to_sym)
-          generator = Generators::ModelDestroyMigrationGenerator.new(model_name, db)
+        if db.table_exists?(table_name.to_sym)
+          generator = Generators::ModelDestroyMigrationGenerator.new(model_name, db, singleton)
           generator.generate_in('db/migrations')
 
         # Otherwise, deletes the migration adding the model's table and every migration that follows
         else
           initial_migration_index = Dir['db/migrations/*.rb'].index do |path|
-            path.include? "add_#{model_name.tableize}_table_to_database"
+            path.include? "add_#{table_name}_table_to_database"
           end
 
           Dir['db/migrations/*.rb'][initial_migration_index..-1].each do |migration_path|

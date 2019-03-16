@@ -45,11 +45,12 @@ module Generators
     # Array of valid field types
     VALID_FIELD_TYPES = %w(primary_key integer string text boolean float date time references)
 
-    def initialize(name, fields)
+    def initialize(name, fields, singleton: false)
       @model_name = name.camelize
-      @table_name = name.tableize
+      @singleton = singleton
+      @table_name = singleton ? name.underscore : name.tableize
       @migration_name = "Add#{@table_name.camelize}TableToDatabase"
-      @model_filename = "#{name.underscore}.rb"
+      @model_filename = singleton ? "#{name.underscore}_singleton.rb" : "#{name.underscore}.rb"
       @migration_filename = "#{Time.now.strftime("%Y%m%d%H%M%S")}_#{@migration_name.underscore}.rb"
       @columns = fields.map { |d| indent(get_column_string(*d), 6) }
     end
@@ -58,9 +59,10 @@ module Generators
     # prints the file generation to console
     def generate_in(model_directory, migration_directory)
       model_path = File.expand_path("#{model_directory}/#{@model_filename}")
-      File.open(model_path, 'w') { |f| f.write(render 'geode/templates/model_generate_template.erb') }
+      template_type = @singleton ? 'model_generate_singleton_template.erb' : 'model_generate_standard_template.erb'
+      File.open(model_path, 'w') { |f| f.write(render "geode/templates/#{template_type}") }
       relative_model_path = Pathname.new(model_path).relative_path_from(Pathname.pwd).to_s
-      puts "+ Generated model #{@model_name} at #{relative_model_path}"
+      puts "+ Generated#{@singleton ?  ' singleton' : nil} model #{@model_name} at #{relative_model_path}"
 
       migration_path = File.expand_path("#{migration_directory}/#{@migration_filename}")
       File.open(migration_path, 'w') { |f| f.write(render 'geode/templates/model_generate_migration_template.erb') }
@@ -88,9 +90,9 @@ module Generators
 
   # Migration generation class for migrations used to rename a model
   class ModelRenameMigrationGenerator < ObjectGenerator
-    def initialize(old_name, new_name)
-      @old_table = old_name.tableize
-      @new_table = new_name.tableize
+    def initialize(old_name, new_name, singleton = false)
+      @old_table = singleton ? old_name.underscore : old_name.tableize
+      @new_table = singleton ? new_name.underscore : new_name.tableize
       @migration_name = "Rename#{@old_table.camelize}TableTo#{@new_table.camelize}"
       @filename = "#{Time.now.strftime("%Y%m%d%H%M%S")}_#{@migration_name.underscore}.rb"
     end
@@ -100,17 +102,17 @@ module Generators
       migration_path = File.expand_path("#{directory}/#{@filename}")
       File.open(migration_path, 'w') { |f| f.write(render 'geode/templates/model_rename_migration_template.erb') }
       relative_migration_path = Pathname.new(migration_path).relative_path_from(Pathname.pwd).to_s
-      puts "+ Generated migration #{@name} at #{relative_migration_path}"
+      puts "+ Generated migration #{@migration_name} at #{relative_migration_path}"
     end
   end
 
   # Migration generation class for migrations used to destroy a model
   class ModelDestroyMigrationGenerator < ObjectGenerator
-    def initialize(name, db)
+    def initialize(name, db, singleton = false)
       class << db
         include Sequel::SchemaDumper
       end
-      @table_name = name.tableize
+      @table_name = singleton ? name.underscore : name.tableize
       @migration_name = "Remove#{@table_name.camelize}TableFromDatabase"
       @filename = "#{Time.now.strftime("%Y%m%d%H%M%S")}_#{@migration_name.underscore}.rb"
       @rollback_table = indent(db.dump_table_schema(@table_name.to_sym), 4)
