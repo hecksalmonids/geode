@@ -34,21 +34,21 @@ To generate a crystal, run `thor geode:generate crystal NAME`, with `NAME` being
 crystal with the given name will be generated in `app/dev`. To generate a crystal in `app/main` instead, add the option
 `--main` (`-m` for short).
 
-To generate a crystal without events, add the option `--without-events`. Similarly, to generate a crystal without
+* To generate a crystal without events, add the option `--without-events`. Similarly, to generate a crystal without
 commands, add the option `--without-commands`. To generate a crystal without database model classes, add the option
 `--without-models`.
 
-All crystals include the `Bot::Models` module, which contains the database's model classes.
+* All crystals include the `Bot::Models` module, which contains the database's model classes.
 
 #### Generating a model
 
 Generating a model is very similar to Rails' implementation, though not as robust. The command is 
 `thor geode:generate model NAME field1:type1, field2:type2`. This generates a model in `app/models` and a migration to
-add its table to the database in `db/migrations`. 
+add its table to the database in `db/migrations`.
 
-To get a list of possible field types, check the description of `thor geode:help generate`.
+* To get a list of possible field types, check the description of `thor geode:help generate`.
 
-The `--singleton` flag allows you to generate a singleton model class, whose matching table will only ever contain
+* The `--singleton` flag allows you to generate a singleton model class, whose matching table will only ever contain
 a single entry. This entry can be accessed by calling `ModelClassName.instance`, which will create the singular record
 if it does not already exist. Additionally, the visibility of the two model class constructors (`.new` and `.create`)
 is set to private.
@@ -65,24 +65,27 @@ Unfortunately, it does not have Rails magic; it cannot guess the migration conte
 
 All of these can be renamed using `thor geode:rename {crystal|model|migration} OLD_NAME NEW_NAME`.
 
-Renaming a model has special behavior; renaming a model will create a migration that renames the model's database table.
+* Renaming a model has special behavior; it will create a migration that renames the model's database table.
 
-When renaming migrations, the name or version number can be provided as the `OLD_NAME` argument.
-
-Note that renaming a model does not update any references to it in crystals or lib scripts!
+  * Note that renaming a model does not update any references to it in crystals or lib scripts!
+  
+* When renaming migrations, the name or version number can be provided as the `OLD_NAME` argument.
 
 #### Destruction
 
 All of these can also be destroyed using `thor geode:destroy {crystal|model|migration} NAMES`. 
 
-Destroying a model has special behavior; unlike crystals and migrations, only one model can be deleted at a time.
-Additionally, if the database has already been migrated such that the model's table exists in the database, a new 
+* Destroying a model has special behavior: 
+
+  * Unlike crystals and migrations, only one model can be deleted at a time.
+
+  * If the database has already been migrated such that the model's table exists in the database, a new 
 migration will be generated that drops the table; otherwise, the migration that would add the table is deleted along 
 with every migration that follows (as it would invalidate those migrations).
 
-When destroying migrations, the name or version number can be provided. 
+* When destroying migrations, the name or version number can be provided. 
 
-Destroying migrations is unsafe; be sure that you know what you're doing if you do it!
+  * Note that destroying migrations is unsafe; be sure that you know what you're doing if you do it!
 
 ### Code
 
@@ -124,12 +127,12 @@ For details on what event handlers are available, refer to the
 
 #### Additional details
 
-The bot object is defined as a constant, `Bot::BOT`. As all crystals are submodules of the main module, `Bot`, they have
+* The bot object is defined as a constant, `Bot::BOT`. As all crystals are submodules of the main module, `Bot`, they have
 access to this constant.
 
-All `.rb` files in the `lib` directory are loaded prior to loading crystals, and after loading the database and models.
+* All `.rb` files in the `lib` directory are loaded prior to loading crystals, and after loading the database and models.
 
-Any additional assets can be placed in the `data` directory; the environment variable `DATA_PATH` contains the path to 
+* Any additional assets can be placed in the `data` directory; the environment variable `DATA_PATH` contains the path to 
 this directory.
 
 ### Database tools
@@ -142,26 +145,26 @@ similarly to Rails, however they are significantly stripped down and have slight
 The command `thor db:migrate` runs all migrations in the `db/migrations` directory up to the latest, or migrates to
 the given version when run as `thor db:migrate --version=N` (given by the migration's timestamp).
 
-Running `thor db:migrate -s` displays the migration status; the information displayed shows the latest migration that 
+* Running `thor db:migrate -s` displays the migration status; the information displayed shows the latest migration that 
 has run and whether the database is up to date on migrations or not.
 
 #### Rolling back migrations
 
 The command `thor db:rollback` rolls back a single migration. 
 
-If the option `--step=N` is provided, it instead rolls back N migrations, provided N is not greater than the total
+* If the option `--step=N` is provided, it instead rolls back N migrations, provided N is not greater than the total
 number of migrations that have run.
 
 #### Interacting with the database
 
 The command `thor db:console` opens an IRB shell that has the database and model classes loaded to interact with. 
 
-If the option `--load-only=one two three` is provided, only the given model classes will be loaded into the console.
+* If the option `--load-only=one two three` is provided, only the given model classes will be loaded into the console.
 
 #### Resetting the database
 The command `thor db:reset` resets the entire database, recreating the tables from the schema at `db/schema.rb`. 
 
-If the option `--tables=one two three` is given, only the given tables are reset. If any other tables in the database
+* If the option `--tables=one two three` is given, only the given tables are reset. If any other tables in the database
 are dependent on a table being reset, the command will fail unless these dependent tables are also being reset.
 
 This command erases data from the database -- be very sure of what you are doing when running this command!
