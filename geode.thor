@@ -76,6 +76,9 @@ class Geode < Thor
     If a model is being generated, the model's fields should be included in the format 'name:type'
     (i.e. generate model name:string number:integer), similar to Rails.
     \x5The allowed field types are: #{Generators::ModelGenerator::VALID_FIELD_TYPES.join(', ')}
+    \x5The 'id' field is special; if given, it must be of type 'primary_key'. If no primary key is
+    given, a primary key field named 'id' will automatically be created; it is skipped if a primary 
+    key with a different name exists.
     \x5The --singleton option allows you to generate a singleton model class, which will create a
     table with only a single entry that can be retrieved using 'ModelClassName.instance'.
   LONG_DESC
@@ -130,8 +133,8 @@ class Geode < Thor
       # Validates that a name is given
       raise Error, 'ERROR: Model name must be given' unless name
 
-      # If fields were given, validates that they have the correct format and the type is valid
-      # and maps the array to the correct format for the generator
+      # If fields were given, validates that they have the correct format, the type is valid and if an id field is
+      # given, it is the primary key; if so, maps the array to the correct format for the generator
       if fields
         fields.map! do |field_str|
           unless (field_name, field_type = field_str.split(':')).size == 2
@@ -139,6 +142,9 @@ class Geode < Thor
           end
           unless Generators::ModelGenerator::VALID_FIELD_TYPES.include?(field_type)
             raise Error, "ERROR: #{field_str} has an invalid type"
+          end
+          if field_name == 'id' && field_type != 'primary_key'
+            raise Error, 'ERROR: Field id can only be primary key'
           end
           [field_name, field_type]
         end

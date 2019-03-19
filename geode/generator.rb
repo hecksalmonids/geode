@@ -52,6 +52,7 @@ module Generators
       @migration_name = "Add#{@table_name.camelize}TableToDatabase"
       @model_filename = singleton ? "#{name.underscore}_singleton.rb" : "#{name.underscore}.rb"
       @migration_filename = "#{Time.now.strftime("%Y%m%d%H%M%S")}_#{@migration_name.underscore}.rb"
+      fields.insert(0, %w(id primary_key)) if fields.none? { |_n, t| t == 'primary_key' }
       @columns = fields.map { |d| indent(get_column_string(*d), 6) }
     end
 
