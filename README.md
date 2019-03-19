@@ -48,6 +48,9 @@ add its table to the database in `db/migrations`.
 
 * To get a list of possible field types, check the description of `thor geode:help generate`.
 
+    * The `id` field is special; the only type it is allowed to have is `primary_key`. This field will be automatically
+    created if no primary key was given as a field, but will be skipped if a primary key with a different name was given.
+
 * The `--singleton` flag allows you to generate a singleton model class, whose matching table will only ever contain
 a single entry. This entry can be accessed by calling `ModelClassName.instance`, which will create the singular record
 if it does not already exist. Additionally, the visibility of the two model class constructors (`.new` and `.create`)
