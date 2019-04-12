@@ -65,7 +65,11 @@ module Bot
   Models = Module.new
   Dir['app/models/*.rb'].each do |path|
     load path
-    puts "+ Loaded model class #{File.basename(path, '.*').camelize}"
+    if (filename = File.basename(path, '.*')).end_with?('_singleton')
+      puts "+ Loaded singleton model class #{File.basename(path, '.*').gsub('_singleton', '').camelize}"
+    else
+      puts "+ Loaded model class #{File.basename(path, '.*').camelize}"
+    end
   end
 
   puts 'Done.'
