@@ -532,7 +532,6 @@ class Database < Thor
                             else
                               Dir['app/models/*.rb'].map do |path|
                                 if path.include? '_singleton.rb'
-                                  puts File.basename(path, '.*').sub('_singleton', '').camelize
                                   File.basename(path, '.*').sub('_singleton', '').camelize
                                 else
                                   File.basename(path, '.*').camelize
