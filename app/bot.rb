@@ -78,7 +78,7 @@ module Bot
 
   # Loads files from lib directory in parent
   Dir['lib/*.rb'].each do |path|
-    load path
+    require path
     puts "+ Loaded file #{path}"
   end
   
