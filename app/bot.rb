@@ -63,8 +63,8 @@ module Bot
 
   # Creates the encapsulating module for all model classes and loads them
   Models = Module.new
-  Dir['app/models/*.rb'].each do |path|
-    load path
+  Dir['./app/models/*.rb'].each do |path|
+    require path
     if (filename = File.basename(path, '.*')).end_with?('_singleton')
       puts "+ Loaded singleton model class #{File.basename(path, '.*').gsub('_singleton', '').camelize}"
     else
@@ -77,9 +77,9 @@ module Bot
   puts 'Loading additional scripts in lib directory...'
 
   # Loads files from lib directory in parent
-  Dir['lib/*.rb'].each do |path|
+  Dir['./lib/*.rb'].each do |path|
     require path
-    puts "+ Loaded file #{path}"
+    puts "+ Loaded file #{path[2..-1]}"
   end
   
   puts 'Done.'
