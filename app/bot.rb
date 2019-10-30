@@ -61,14 +61,14 @@ module Bot
   # Database constant
   DB = Sequel.sqlite(ENV['DB_PATH'])
 
-  # Creates the encapsulating module for all model classes and loads them
+  # Load model classes and print to console
   Models = Module.new
-  Dir['./app/models/*.rb'].each do |path|
-    require path
+  Dir['app/models/*.rb'].each do |path|
+    load path
     if (filename = File.basename(path, '.*')).end_with?('_singleton')
-      puts "+ Loaded singleton model class #{File.basename(path, '.*').gsub('_singleton', '').camelize}"
+      puts "+ Loaded singleton model class #{filename[0..-11].camelize}"
     else
-      puts "+ Loaded model class #{File.basename(path, '.*').camelize}"
+      puts "+ Loaded model class #{filename.camelize}"
     end
   end
 
@@ -77,31 +77,33 @@ module Bot
   puts 'Loading additional scripts in lib directory...'
 
   # Loads files from lib directory in parent
-  Dir['./lib/*.rb'].each do |path|
+  Dir['./lib/**/*.rb'].each do |path|
     require path
     puts "+ Loaded file #{path[2..-1]}"
   end
-  
+
   puts 'Done.'
 
-  # Loads a crystal from the given file and includes the module into the bot's container;
-  # crystal loading progress is printed to console
-  # @param path [String] the path to the file to load the crystal from; filename must be the crystal
-  #                      name in_snake_case, or this will not work (the crystal generator names the
-  #                      file in this way automatically)
-  def self.load_crystal(path)
-    module_name = File.basename(path, '.*').camelize
+  # Load all crystals, preloading their modules if they are nested within subfolders
+  ENV['CRYSTALS_TO_LOAD'].split(',').each do |path|
+    crystal_name = path.camelize.split('::')[2..-1].join('::').sub('.rb', '')
+    parent_module = crystal_name.split('::')[0..-2].reduce(self) do |memo, name|
+      if memo.const_defined? name
+        memo.const_get name
+      else
+        submodule = Module.new
+        memo.const_set(name, submodule)
+        submodule
+      end
+    end
     load path
-    BOT.include! self.const_get(module_name)
-    puts "+ Loaded crystal #{module_name}"
+    BOT.include! self.const_get(crystal_name)
+    puts "+ Loaded crystal #{crystal_name}"
   end
-
-  # Loads crystals depending on CRYSTALS_TO_LOAD environment variable
-  ENV['CRYSTALS_TO_LOAD'].split(',').each { |p| load_crystal p }
 
   puts "Starting bot with logging mode #{config.log_mode}..."
   BOT.ready { puts 'Bot started!' }
 
-  # After loading all desired crystals, runs the bot
+  # After loading all desired crystals, run the bot
   BOT.run
 end

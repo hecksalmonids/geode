@@ -10,12 +10,12 @@ module Generators
   class ObjectGenerator
     private
 
-    # Indents every line of the given string with the given number of spaces
+    # Indent every line of the given string with the given number of spaces
     def indent(str, spaces)
       str.split("\n").map { |s| (' ' * spaces) + s }.join("\n")
     end
 
-    # Renders the template at the given path (in trim mode) with the current binding and returns result
+    # Render the template at the given path (in trim mode) with the current binding and returns result
     def render(path)
       template = ERB.new(File.read(File.expand_path(path)), nil, '-')
       template.result(binding)
@@ -31,9 +31,11 @@ module Generators
       @models = !without_models
     end
 
-    # Generates crystal file in the given directory; prints the file generation to console
+    # Generate crystal file in the given directory; print the file generation to console
     def generate_in(directory)
       crystal_path = File.expand_path("#{directory}/#{@filename}")
+      path = File.dirname(crystal_path)
+      FileUtils.mkdir_p(path) unless Dir.exists?(path)
       File.open(crystal_path, 'w') { |f| f.write(render 'geode/templates/crystal_generate_template.erb') }
       relative_crystal_path = Pathname.new(crystal_path).relative_path_from(Pathname.pwd).to_s
       puts "+ Generated crystal #{@crystal_name} at #{relative_crystal_path}"
@@ -56,8 +58,8 @@ module Generators
       @columns = fields.map { |d| indent(get_column_string(*d), 6) }
     end
 
-    # Generates model file within the given model directory and its respective migration in the migration directory;
-    # prints the file generation to console
+    # Generate model file within the given model directory and its respective migration in the migration directory;
+    # print the file generation to console
     def generate_in(model_directory, migration_directory)
       model_path = File.expand_path("#{model_directory}/#{@model_filename}")
       template_type = @singleton ? 'model_generate_singleton_template.erb' : 'model_generate_standard_template.erb'
@@ -99,7 +101,7 @@ module Generators
       @filename = "#{Time.now.strftime("%Y%m%d%H%M%S")}_#{@migration_name.underscore}.rb"
     end
 
-    # Generates a timestamped migration file in the given directory; prints the file generation to console
+    # Generate a timestamped migration file in the given directory; print the file generation to console
     def generate_in(directory)
       migration_path = File.expand_path("#{directory}/#{@filename}")
       File.open(migration_path, 'w') { |f| f.write(render 'geode/templates/model_rename_migration_template.erb') }
@@ -120,7 +122,7 @@ module Generators
       @rollback_table = indent(db.dump_table_schema(@table_name.to_sym), 4)
     end
 
-    # Generates a timestamped migration file in the given directory; prints the file generation to console
+    # Generate a timestamped migration file in the given directory; print the file generation to console
     def generate_in(directory)
       migration_path = File.expand_path("#{directory}/#{@filename}")
       File.open(migration_path, 'w') { |f| f.write(render 'geode/templates/model_destroy_migration_template.erb') }
@@ -137,8 +139,8 @@ module Generators
       @change = !with_up_down
     end
 
-    # Generates a timestamped migration file in the given directory, rendering either the change or up/down template;
-    # prints the file generation to console
+    # Generate a timestamped migration file in the given directory, rendering either the change or up/down template;
+    # print the file generation to console
     def generate_in(directory)
       migration_path = File.expand_path("#{directory}/#{@filename}")
       template_type = @change ? 'migration_generate_change_template.erb' : 'migration_generate_up_down_template.erb'
@@ -158,8 +160,8 @@ module Generators
       @tables = raw_tables.map { |t| indent(t.sub('create_table', 'db.create_table?'), 4) }
     end
 
-    # Generates schema from the given database at schema.rb in the given directory;
-    # prints the file generation to console
+    # Generate schema from the given database at schema.rb in the given directory;
+    # print the file generation to console
     def generate_in(directory)
       schema_path = File.expand_path("#{directory}/schema.rb")
       File.open(schema_path, 'w') { |f| f.write(render 'geode/templates/schema_template.erb') }
