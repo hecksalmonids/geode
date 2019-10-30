@@ -263,10 +263,10 @@ class Geode < Thor
     end
   end
 
-  desc 'destroy {crystal|model|migration} NAME(S)', 'Destroy Geode crystals, models or migrations'
+  desc 'destroy {model|migration} NAME(S)', 'Destroy Geode models or migrations'
   long_desc <<~LONG_DESC.strip
-    Destroy a Geode crystal, model or migration. 
-    Destruction of models must be done one at a time; however multiple crystals or migrations may be deleted at a time.
+    Destroy a Geode model or migration. 
+    Destruction of models must be done one at a time; however multiple migrations may be deleted at a time.
 
     When destroying a model, the migration that created its table and every migration afterward will be deleted 
     provided the model's table does not already exist in the database; otherwise, a new migration will be created 
@@ -277,27 +277,10 @@ class Geode < Thor
   LONG_DESC
   def destroy(type, *args)
     # Validate that arguments have been given
-    raise Error, 'ERROR: At least one name must be given' if args.empty?
+    raise Error, 'ERROR: At least one name must be given' if type && args.empty?
 
     # Case destruction type
     case type
-    when 'crystal'
-      all_crystal_paths = Dir['app/main/*.rb'] + Dir['app/dev/*.rb']
-
-      # Validate that crystals with the given names all exist and gets their file paths
-      crystals_to_delete = args.map do |crystal_name|
-        if (crystal_path = all_crystal_paths.find { |p| File.basename(p, '.*').camelize == crystal_name })
-          [crystal_name, crystal_path]
-        else raise Error, "ERROR: Crystal #{crystal_name} not found"
-        end
-      end
-
-      # Delete all given crystals, printing deletions to console
-      crystals_to_delete.each do |crystal_name, crystal_path|
-        File.delete(crystal_path)
-        puts "- Deleted crystal #{crystal_name}"
-      end
-
     when 'model'
       # Validate that only one model name is given
       raise Error, 'ERROR: Only one model can be deleted at a time' unless args.size == 1
@@ -367,7 +350,7 @@ class Geode < Thor
         puts "- Deleted migration version #{migration_version} (#{migration_name})"
       end
 
-    else raise Error, 'ERROR: Generation type must be crystal, model or migration'
+    else raise Error, 'ERROR: Generation type must be model or migration'
     end
   end
 end
