@@ -312,11 +312,11 @@ class Geode < Thor
 
         # Otherwise, delete the migration adding the model's table and every migration that follows
         else
-          initial_migration_index = Dir['db/migrations/*.rb'].index do |path|
+          initial_migration_index = Dir['db/migrations/*.rb'].sort.index do |path|
             path.include? "add_#{table_name}_table_to_database"
           end
 
-          Dir['db/migrations/*.rb'][initial_migration_index..-1].each do |migration_path|
+          Dir['db/migrations/*.rb'].sort[initial_migration_index..-1].each do |migration_path|
             migration_name = File.basename(migration_path)[15..-4].camelize
             migration_version = File.basename(migration_path).to_i
             File.delete(migration_path)
