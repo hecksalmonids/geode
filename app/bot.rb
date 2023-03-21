@@ -46,7 +46,7 @@ module Bot
 
   # Creates the bot object using the config attributes; this is a constant 
   # in order to make it accessible by crystals
-  BOT = Discordrb::Commands::CommandBot.new(config.to_h)
+  BOT = Discordrb::Commands::CommandBot.new(**config.to_h)
 
   # Sets bot's playing game
   BOT.ready { BOT.game = game.to_s }
