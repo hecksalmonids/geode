@@ -109,7 +109,7 @@ module Bot
     BOT.run
   rescue Interrupt
     puts ''
-    BOT.stop
     puts 'Bot stopped.'
+    exit
   end
 end
