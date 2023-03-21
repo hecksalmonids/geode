@@ -66,7 +66,7 @@ class Geode < Thor
     Generate a Geode crystal, model or migration.
 
     When generating a crystal, the format is 
-    'generate crystal [-m], [--main], [--without-commands], [--without-events], [--without-models] names...'
+    'generate crystal [-m], [--main], [--without-models] names...'
     \x5When generating a model, the format is 'generate model name [--singleton] [fields...]'
     \x5When generating a migration, the format is 'generate migration [--with-up-down] name'
 
@@ -82,10 +82,6 @@ class Geode < Thor
   option :main,             type:    :boolean,
                             aliases: '-m',
                             desc:    'Generate a crystal in the main folder instead of dev (crystal generation only)'
-  option :without_commands, type:    :boolean,
-                            desc:    'Generate a crystal without a CommandContainer (crystal generation only)'
-  option :without_events,   type:    :boolean,
-                            desc:    'Generate a crystal without an EventContainer (crystal generation only)'
   option :without_models,   type:    :boolean,
                             desc:    'Generate a crystal without database model classes (crystal generation only)'
   option :singleton,        type:    :boolean,
@@ -99,11 +95,6 @@ class Geode < Thor
       # Validate that no invalid options are given when a crystal is being generated
       raise Error, 'ERROR: Option --singleton should not be given when generating a crystal' if options[:singleton]
       raise Error, 'ERROR: Option --with-up-down should not be given when generating a crystal' if options[:with_up_down]
-
-      # Validate that both of --without-events and --without-commands are not given
-      if options[:without_events] && options[:without_commands]
-        raise Error, 'ERROR: Only one of --without-events, --without-commands can be given'
-      end
 
       # Iterate through the given names and generate crystals for each
       args.each do |crystal_name|
@@ -119,8 +110,6 @@ class Geode < Thor
     when 'model'
       # Validate that no invalid option is given when generating a model
       raise Error, 'ERROR: Option -m, --main should not be given when generating a model' if options[:main]
-      raise Error, 'ERROR: Option --without-commands should not be given when generating a model' if options[:without_commands]
-      raise Error, 'ERROR: Option --without-events should not be given when generating a model' if options[:without_events]
       raise Error, 'ERROR: Option --without-models should not be given when generating a model' if options[:without_models]
       raise Error, 'ERROR: Option --with-up-down should not be given when generating a model' if options[:with_up_down]
 
@@ -158,8 +147,6 @@ class Geode < Thor
     when 'migration'
       # Validate that no invalid option is given when generating a migration
       raise Error, 'ERROR: Option -m, --main should not be given when generating a migration' if options[:main]
-      raise Error, 'ERROR: Option --without-commands should not be given when generating a migration' if options[:without_commands]
-      raise Error, 'ERROR: Option --without-events should not be given when generating a migration' if options[:without_events]
       raise Error, 'ERROR: Option --without-models should not be given when generating a migration' if options[:without_models]
       raise Error, 'ERROR: Option --singleton should not be given when generating a migration' if options[:singleton]
 
