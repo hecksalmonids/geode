@@ -105,5 +105,11 @@ module Bot
   BOT.ready { puts 'Bot started!' }
 
   # After loading all desired crystals, run the bot
-  BOT.run
+  begin
+    BOT.run
+  rescue Interrupt
+    puts ''
+    BOT.stop
+    puts 'Bot stopped.'
+  end
 end
