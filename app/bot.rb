@@ -7,46 +7,46 @@ require 'sequel'
 # access to the bot object as a constant, Bot::BOT
 module Bot
   # Loads config file into struct and parses info into a format readable by CommandBot constructor
-  config = OpenStruct.new(YAML.load_file 'config.yml')
-  config.client_id = config.id
-  config.delete_field(:id)
-  config.type = (config.type == 'user') ? :user : :bot
-  config.parse_self = !!config.react_to_self
-  config.delete_field(:react_to_self)
-  config.help_command = config.help_alias.empty? ? false : config.help_alias.map(&:to_sym)
-  config.delete_field(:help_alias)
-  config.spaces_allowed = config.spaces_allowed.class == TrueClass
-  config.webhook_commands = config.react_to_webhooks.class == TrueClass
-  config.delete_field(:react_to_webhooks)
-  config.ignore_bots = !config.react_to_bots
-  config.log_mode = (%w(debug verbose normal quiet silent).include? config.log_mode) ? config.log_mode.to_sym : :normal
-  config.fancy_log = config.fancy_log.class == TrueClass
-  config.suppress_ready = !config.log_ready
-  config.delete_field(:log_ready)
-  config.redact_token = !(config.log_token.class == TrueClass)
-  config.delete_field(:log_token)
+  file_config = OpenStruct.new(YAML.load_file 'config.yml')
+  file_config.client_id = file_config.id
+  file_config.delete_field(:id)
+  file_config.type = (file_config.type == 'user') ? :user : :bot
+  file_config.parse_self = !!file_config.react_to_self
+  file_config.delete_field(:react_to_self)
+  file_config.help_command = file_config.help_alias.empty? ? false : file_config.help_alias.map(&:to_sym)
+  file_config.delete_field(:help_alias)
+  file_config.spaces_allowed = file_config.spaces_allowed.class == TrueClass
+  file_config.webhook_commands = file_config.react_to_webhooks.class == TrueClass
+  file_config.delete_field(:react_to_webhooks)
+  file_config.ignore_bots = !file_config.react_to_bots
+  file_config.log_mode = (%w(debug verbose normal quiet silent).include? file_config.log_mode) ? file_config.log_mode.to_sym : :normal
+  file_config.fancy_log = file_config.fancy_log.class == TrueClass
+  file_config.suppress_ready = !file_config.log_ready
+  file_config.delete_field(:log_ready)
+  file_config.redact_token = !(file_config.log_token.class == TrueClass)
+  file_config.delete_field(:log_token)
   # Game is stored in a separate variable as it is not a bot attribute
-  game = config.game
-  config.delete_field(:game)
-  # Cleans up config struct by deleting all nil entries
-  config = OpenStruct.new(config.to_h.reject { |_a, v| v.nil? })
+  game = file_config.game
+  file_config.delete_field(:game)
+  # Cleans up file config struct by deleting all nil entries
+  file_config = OpenStruct.new(file_config.to_h.reject { |_a, v| v.nil? })
 
   puts '==GEODE: A Clunky Modular Ruby Bot Framework With A Database=='
 
   # Prints an error message to console for any missing required components and exits
-  puts 'ERROR: Client ID not found in config.yml' if config.client_id.nil?
-  puts 'ERROR: Token not found in config.yml' if config.token.nil?
-  puts 'ERROR: Command prefix not found in config.yml' if config.prefix.empty?
-  if config.client_id.nil? || config.token.nil? || config.prefix.empty?
+  puts 'ERROR: Client ID not found in config.yml' if file_config.client_id.nil?
+  puts 'ERROR: Token not found in config.yml' if file_config.token.nil?
+  puts 'ERROR: Command prefix not found in config.yml' if file_config.prefix.empty?
+  if file_config.client_id.nil? || file_config.token.nil? || file_config.prefix.empty?
     puts 'Exiting.'
     exit(false)
   end
 
   puts 'Initializing the bot object...'
 
-  # Creates the bot object using the config attributes; this is a constant 
+  # Creates the bot object using the file config attributes; this is a constant
   # in order to make it accessible by crystals
-  BOT = Discordrb::Commands::CommandBot.new(**config.to_h)
+  BOT = Discordrb::Commands::CommandBot.new(**file_config.to_h)
 
   # Sets bot's playing game
   BOT.ready { BOT.game = game.to_s }
@@ -55,11 +55,9 @@ module Bot
 
   puts 'Loading application data (database, models, etc.)...'
 
-  # Sets path to the data folder as environment variable
-  ENV['DATA_PATH'] = File.expand_path('data')
-
-  # Database constant
-  DB = Sequel.sqlite(ENV['DB_PATH'])
+  # Data folder and database convenience constants
+  DATA_PATH = File.expand_path('data')
+  DB = Sequel.sqlite(Config.db_path)
 
   # Load model classes and print to console
   Models = Module.new
@@ -76,7 +74,7 @@ module Bot
 
   puts 'Loading additional scripts in lib directory...'
 
-  # Loads files from lib directory in parent
+  # Load files from lib directory in parent
   Dir['./lib/**/*.rb'].each do |path|
     require path
     puts "+ Loaded file #{path[2..-1]}"
@@ -84,8 +82,42 @@ module Bot
 
   puts 'Done.'
 
+  # Load slash command definitions
+  if Config.add_slash
+    puts 'Updating slash command definitions...'
+
+    # Load all slash commands in folder, with each file storing command ID in config
+    Dir['./app/slash/*.rb'].each do |path|
+      require path
+      server_id, command_name = path.split(/[\/\\]/)[3].sub('.rb', '').split('_', 2)
+      extra = server_id == 0 ? nil : " for server ID #{server_id}"
+      puts "+ Loaded slash command /#{command_name}#{extra}."
+    end
+
+    puts 'Done.'
+  end
+
+  # Remove either all undefined global slash commands or all undefined slash commands in the given server
+  if Config.remove_slash
+    if Config.remove_slash == 'global'
+      puts 'Removing undefined global slash commands...'
+      BOT.get_application_commands.reject { |cmd| Config.slash_ids.include?(cmd.id) }.each do |cmd|
+        puts "- Removed slash command /#{cmd.name}."
+        cmd.delete
+      end
+      puts 'Done.'
+    else
+      puts "Removing undefined slash commands in server ID #{Config.remove_slash}..."
+      BOT.get_application_commands(server_id: Config.remove_slash).reject { |cmd| Config.slash_ids.include?(cmd.id) }.each do |cmd|
+        puts "- Removed slash command /#{cmd.name}."
+        cmd.delete
+      end
+      puts 'Done.'
+    end
+  end
+
   # Load all crystals, preloading their modules if they are nested within subfolders
-  ENV['CRYSTALS_TO_LOAD'].split(',').each do |path|
+  Config.crystals_to_load.each do |path|
     crystal_name = path.camelize.split('::')[2..-1].join('::').sub('.rb', '')
     parent_module = crystal_name.split('::')[0..-2].reduce(self) do |memo, name|
       if memo.const_defined? name
@@ -101,7 +133,7 @@ module Bot
     puts "+ Loaded crystal #{crystal_name}"
   end
 
-  puts "Starting bot with logging mode #{config.log_mode}..."
+  puts "Starting bot with logging mode #{file_config.log_mode}..."
   BOT.ready { puts 'Bot started!' }
 
   # After loading all desired crystals, run the bot

@@ -1,0 +1,8 @@
+# Slash command: /<%= @command_name %><%= "\n# Server: #{@server_id}" if @server_id %>
+module Bot
+  Config.slash_ids.push(
+    BOT.register_application_command(:<%= @command_name %>, "<%= @description %>"<%= ", server_id: #{@server_id}" if @server_id %>) do |cmd|
+      # Add argument or subcommand/group definitions here, or leave blank for no definitions.
+    end.id
+  )
+end

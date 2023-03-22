@@ -22,7 +22,7 @@ To run a bot, fill in `config.yml` with all the necessary information and then r
 (or `thor geode -s` for short) on the command line. It will automatically load all crystals present in the `app/main` 
 directory. To run crystals present in the `app/dev` directory, run `thor geode:start -d` for dev crystals,
 `thor geode:start -a` to run all crystals, and `thor geode:start --load-only=one two three` to run only the
-specified crystals.
+specified crystals. To update the bot's registered slash commands, use the `--add-slash` and `--remove-slash` options.
 
 ## Development
 
@@ -36,6 +36,13 @@ crystal with the given name will be generated in `app/dev`. To generate a crysta
 
 All crystals include the `Bot::Models` module, which contains the database's model classes. To generate a crystal 
 without database model classes, add the option `--without-models`.
+
+#### Generating a slash command
+
+To generate a slash command, run `thor geode:generate slash NAME`, with `NAME` being the slash command's name. A
+slash command registration skeleton with the given name will be generated in `app/slash`. By default, it will be a 
+global command. The `--desc` option can be used to pre-generate a description, and the `--server-id` option can be
+used to generate a server-specific command.
 
 #### Generating a model
 
@@ -124,6 +131,12 @@ end
 
 For details on what event handlers are available, refer to the
 [docs](https://meew0.github.io/discordrb/master/Discordrb/EventContainer.html).
+
+#### Writing a slash command
+
+To define the basic structure of a slash command, use the generator. For more details on how to define and
+implement them, refer to the [example code](https://github.com/shardlab/discordrb/blob/main/examples/commands.rb) on
+GitHub.
 
 #### Additional details
 

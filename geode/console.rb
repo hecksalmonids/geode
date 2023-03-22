@@ -1,17 +1,20 @@
 require 'sequel'
 require 'irb'
+require 'dry-configurable'
 
 module Bot
   Models = Module.new
 end
 
+
+
 # Loads database
-DB = Sequel.sqlite(ENV['DB_PATH'])
+DB = Sequel.sqlite(Config.db_path)
 puts '+ Loaded database'
 
 # Load models based on MODELS_TO_LOAD environment variable, if defined
-if ENV['MODELS_TO_LOAD']
-  models_to_load = ENV['MODELS_TO_LOAD'].split(',').each do |path|
+if Config.models_to_load
+  models_to_load = Config.models_to_load.each do |path|
     path.camelize.split('::')[2..-2].reduce do |memo = Bot::Models, name|
       if memo.const_defined? name
         memo.const_get name
@@ -36,7 +39,7 @@ include Bot::Models
 
 # Clear command-line arguments and load console
 ARGV.clear
-if ENV['MODELS_TO_LOAD']
+if Config.models_to_load
   puts 'Database can be accessed with the constant DB. Model classes can be accessed with their default names.'
 else
   puts 'Database can be accessed with the constant DB.'

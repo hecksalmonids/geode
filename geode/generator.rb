@@ -24,10 +24,9 @@ module Generators
 
   # Crystal generator class
   class CrystalGenerator < ObjectGenerator
-    def initialize(name, without_commands: false, without_events: false, without_models: false)
+    def initialize(name, without_models: false)
       @crystal_name = name.camelize
       @filename = "#{name.underscore}.rb"
-      @containers = {command: !without_commands, event: !without_events}
       @models = !without_models
     end
 
@@ -39,6 +38,24 @@ module Generators
       File.open(crystal_path, 'w') { |f| f.write(render 'geode/templates/crystal_generate_template.erb') }
       relative_crystal_path = Pathname.new(crystal_path).relative_path_from(Pathname.pwd).to_s
       puts "+ Generated crystal #{@crystal_name} at #{relative_crystal_path}"
+    end
+  end
+
+  # Slash command generator class
+  class SlashGenerator < ObjectGenerator
+    def initialize(name, description: 'Enter description here', server_id: nil)
+      @command_name = name
+      @description = description
+      @filename = "#{server_id || 0}_#{name}.rb"
+      @server_id = server_id
+    end
+
+    # Generate slash command file in the given directory; print the file generation to console
+    def generate_in(directory)
+      command_path = File.expand_path("#{directory}/#{@filename}")
+      File.open(command_path, 'w') { |f| f.write(render 'geode/templates/slash_command_generate_template.erb') }
+      relative_command_path = Pathname.new(command_path).relative_path_from(Pathname.pwd).to_s
+      puts "+ Generated slash command /#{@command_name} at #{relative_command_path}"
     end
   end
 

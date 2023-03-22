@@ -5,11 +5,10 @@ require 'bundler/setup'
 require 'thor'
 require 'irb'
 require 'sequel'
+require 'dry-configurable'
+require_relative 'geode/config'
 require_relative 'geode/generator'
 Sequel.extension :inflector, :migration, :schema_dumper
-
-# Set database path as environment variable
-ENV['DB_PATH'] = File.expand_path('db/data.db')
 
 # Geode's main CLI; contains tasks related to Geode functionality
 class Geode < Thor
@@ -22,51 +21,68 @@ class Geode < Thor
   check_unknown_options!
 
   map %w(-r -s) => :start
-  desc 'start [-d], [-a], [--load-only=one two three]', 'Load crystals and start the bot'
+  desc 'start [-d], [-a], [--load-only=one two three], [--add-slash] [--remove-slash=1234567890|global]', 'Load crystals and start the bot'
   long_desc <<~LONG_DESC.strip
     Loads crystals and starts the bot. With no options, this loads only the crystals in main.
   
     Note: If two crystals with the same name are found by --load-only, an error will be thrown as crystals must
     have unique names.
   LONG_DESC
-  option :dev,        type:    :boolean,
-                      aliases: '-d',
-                      desc:    'Load dev crystals instead of main'
-  option :all,        type:    :boolean,
-                      aliases: '-a',
-                      desc:    'Load all crystals (main and dev)'
-  option :load_only,  type:    :array,
-                      desc:    'Load only the given crystals (searching both main and dev)'
+  option :dev,          type:    :boolean,
+                        aliases: '-d',
+                        desc:    'Load dev crystals instead of main'
+  option :all,          type:    :boolean,
+                        aliases: '-a',
+                        desc:    'Load all crystals (main and dev)'
+  option :load_only,    type:    :array,
+                        desc:    'Load only the given crystals (searching both main and dev)'
+  option :add_slash,    type:    :boolean,
+                        desc:    'Add the slash commands defined in app/slash'
+  option :remove_slash, type:    :string,
+                        desc:    'Remove the slash commands in the server with the given ID, or global for global commands, except the ones defined in app/slash'
   def start
-    # Validate that only one option is given
-    raise Error, 'ERROR: Only one of -d, -a and --load-only can be given' if options.count { |_k, v| v } > 1
+    # Validate that only one of the first three options is given
+    if options.reject{ |k, _v| k == :add_slash || k == :remove_slash }.count { |_k, v| v } > 1
+      raise Error, 'ERROR: Only one of -d, -a and --load-only can be given'
+    end
+    # Validate that if remove-slash is given it is a number or 'global'
+    if options[:remove_slash] && !(options[:remove_slash] =~ /\A(global|\d+)\z/)
+      raise Error, "ERROR: --remove-slash input must be a number or 'global'"
+    end
 
     # Select the crystals to load, throwing an error if a crystal given in load_only is not found
     if options[:dev]
-      ENV['CRYSTALS_TO_LOAD'] = Dir['app/dev/**/*.rb'].join(',')
+      Config.config.crystals_to_load = Dir['app/dev/**/*.rb']
     elsif options[:all]
-      ENV['CRYSTALS_TO_LOAD'] = (Dir['app/main/**/*.rb'] + Dir['app/dev/*.rb']).join(',')
+      Config.config.crystals_to_load = (Dir['app/main/**/*.rb'] + Dir['app/dev/*.rb'])
     elsif options[:load_only]
       all_crystal_paths = Dir['app/main/**/*.rb'] + Dir['app/dev/**/*.rb']
-      ENV['CRYSTALS_TO_LOAD'] = options[:load_only].map do |arg|
+      Config.config.crystals_to_load = options[:load_only].map do |arg|
         path = all_crystal_paths.find { |p| p.split('/')[2..-1].join('/') == (arg.underscore + '.rb') }
         raise Error, "ERROR: Crystal #{arg} not found" unless path
         path
-      end.join(',')
+      end
     else
-      ENV['CRYSTALS_TO_LOAD'] = Dir['app/main/**/*.rb'].join(',')
+      Config.config.crystals_to_load = Dir['app/main/**/*.rb']
     end
+
+    # Set add_slash config setting to true if option is given
+    Config.config.add_slash = options[:add_slash]
+
+    # Set remove_slash config to server ID or global if given
+    Config.config.remove_slash = options[:remove_slash]
 
     # Load the bot script
     load File.expand_path('app/bot.rb')
   end
 
-  desc 'generate {crystal|model|migration} ARGS', 'Generate a Geode crystal, model or migration'
+  desc 'generate {crystal|slash|model|migration} ARGS', 'Generate a Geode crystal, model or migration'
   long_desc <<~LONG_DESC.strip
     Generate a Geode crystal, model or migration.
 
     When generating a crystal, the format is 
     'generate crystal [-m], [--main], [--without-models] names...'
+    When generating a slash command, the format is 'generate slash name [--desc="Description"] [--server-id=1234567890]'
     \x5When generating a model, the format is 'generate model name [--singleton] [fields...]'
     \x5When generating a migration, the format is 'generate migration [--with-up-down] name'
 
@@ -84,6 +100,11 @@ class Geode < Thor
                             desc:    'Generate a crystal in the main folder instead of dev (crystal generation only)'
   option :without_models,   type:    :boolean,
                             desc:    'Generate a crystal without database model classes (crystal generation only)'
+  option :desc,             type:    :string,
+                            desc:    'Generate a slash command with the given description (slash command generation only)',
+                            default: 'Enter description here'
+  option :server_id,        type:    :numeric,
+                            desc:    'Generate a slash command with the given server ID (slash command generation only)'
   option :singleton,        type:    :boolean,
                             desc:    'Generate a singleton model class instead of the standard (model generation only)'
   option :with_up_down,     type:    :boolean,
@@ -93,6 +114,8 @@ class Geode < Thor
     case type
     when 'crystal'
       # Validate that no invalid options are given when a crystal is being generated
+      raise Error, 'ERROR: Option --desc should not be given when generating a crystal' if options[:desc]
+      raise Error, 'ERROR: Option --server-id should not be given when generating a crystal' if options[:server_id]
       raise Error, 'ERROR: Option --singleton should not be given when generating a crystal' if options[:singleton]
       raise Error, 'ERROR: Option --with-up-down should not be given when generating a crystal' if options[:with_up_down]
 
@@ -100,15 +123,30 @@ class Geode < Thor
       args.each do |crystal_name|
         generator = Generators::CrystalGenerator.new(
             crystal_name,
-            without_commands: options[:without_commands],
-            without_events: options[:without_events],
             without_models: options[:without_models]
         )
         generator.generate_in(options[:main] ? 'app/main' : 'app/dev')
       end
 
+    when 'slash'
+      # Validate that no invalid options are given when a slash command is being generated
+      raise Error, 'ERROR: Option -m, --main should not be given when generating a slash command' if options[:main]
+      raise Error, 'ERROR: Option --without-models should not be given when generating a slash command' if options[:without_models]
+      raise Error, 'ERROR: Option --singleton should not be given when generating a slash command' if options[:singleton]
+      raise Error, 'ERROR: Option --with-up-down should not be given when generating a slash command' if options[:with_up_down]
+
+      # Generate slash command
+      generator = Generators::SlashGenerator.new(
+        args[0],
+        description: options[:desc],
+        server_id: options[:server_id]
+      )
+      generator.generate_in('app/slash')
+
     when 'model'
       # Validate that no invalid option is given when generating a model
+      raise Error, 'ERROR: Option --desc should not be given when generating a model' if options[:desc]
+      raise Error, 'ERROR: Option --server-id should not be given when generating a model' if options[:server_id]
       raise Error, 'ERROR: Option -m, --main should not be given when generating a model' if options[:main]
       raise Error, 'ERROR: Option --without-models should not be given when generating a model' if options[:without_models]
       raise Error, 'ERROR: Option --with-up-down should not be given when generating a model' if options[:with_up_down]
@@ -135,7 +173,7 @@ class Geode < Thor
           [field_name, field_type]
         end
 
-        # If fields were not given, set fields equal to an empty array
+      # If fields were not given, set fields equal to an empty array
       else
         fields = []
       end
@@ -148,6 +186,8 @@ class Geode < Thor
       # Validate that no invalid option is given when generating a migration
       raise Error, 'ERROR: Option -m, --main should not be given when generating a migration' if options[:main]
       raise Error, 'ERROR: Option --without-models should not be given when generating a migration' if options[:without_models]
+      raise Error, 'ERROR: Option --desc should not be given when generating a migration' if options[:desc]
+      raise Error, 'ERROR: Option --server-id should not be given when generating a migration' if options[:server_id]
       raise Error, 'ERROR: Option --singleton should not be given when generating a migration' if options[:singleton]
 
       # Validate that exactly one argument (the migration name) is given
@@ -291,7 +331,7 @@ class Geode < Thor
       puts "- Deleted model file for model #{model_name}"
 
       # Load the database
-      Sequel.sqlite(ENV['DB_PATH']) do |db|
+      Sequel.sqlite(config.db_path) do |db|
         # If model's table exists in the database, generate new migration dropping the model's table
         if db.table_exists?(table_name.to_sym)
           generator = Generators::ModelDestroyMigrationGenerator.new(model_name, db, singleton)
@@ -370,7 +410,7 @@ class Database < Thor
                    desc:    'Check the current status of migrations'
   def migrate
     # Load the database
-    Sequel.sqlite(ENV['DB_PATH']) do |db|
+    Sequel.sqlite(config.db_path) do |db|
       # Validate that both version and status are not given at the same time
       raise Error, 'ERROR: Only one of --version, -s can be given at a time' if options[:version] && options[:status]
 
@@ -435,7 +475,7 @@ class Database < Thor
                 desc: 'Revert the given number of migrations'
   def rollback
     # Load the database
-    Sequel.sqlite(ENV['DB_PATH']) do |db|
+    Sequel.sqlite(config.db_path) do |db|
       # Validate that the steps to rollback is not greater than the completed migrations
       if options[:step]
         migration_count = db[:schema_migrations].count
@@ -478,8 +518,7 @@ class Database < Thor
       raise Error, 'ERROR: Only one of --load-only and --without-models can be given at a time'
     end
 
-    # Validate that all given models exist if load_only is given and add their paths to MODELS_TO_LOAD environment
-    # variable if so
+    # Validate that all given models exist if load_only is given and add their paths to config if so
     if options[:load_only]
       options[:load_only].each do |model_name|
         model_paths = Array.new
@@ -490,12 +529,10 @@ class Database < Thor
         else
           raise Error, "ERROR: Model #{model_name} not found"
         end
-        ENV['MODELS_TO_LOAD'] = model_paths.join
+        Config.config.models_to_load = model_paths
       end
-    elsif options[:without_models]
-      ENV['MODELS_TO_LOAD'] = nil
-    else
-      ENV['MODELS_TO_LOAD'] = Dir['app/models/*.rb'].join(',')
+    elsif !options[:without_models]
+      Config.config.models_to_load = Dir['app/models/*.rb']
     end
 
     # Load IRB console script
@@ -515,7 +552,7 @@ class Database < Thor
                   desc: 'Reset only the given tables'
   def reset
     # Load the database
-    Sequel.sqlite(ENV['DB_PATH']) do |db|
+    Sequel.sqlite(config.db_path) do |db|
       # Validate that if tables option is given, all given tables exist, none of them are schema_migrations, and
       # either have no dependent tables or all dependent tables are included in the arguments
       if options[:tables]
