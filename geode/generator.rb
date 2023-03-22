@@ -17,7 +17,7 @@ module Generators
 
     # Render the template at the given path (in trim mode) with the current binding and returns result
     def render(path)
-      template = ERB.new(File.read(File.expand_path(path)), nil, '-')
+      template = ERB.new(File.read(File.expand_path(path)), trim_mode: '-')
       template.result(binding)
     end
   end
