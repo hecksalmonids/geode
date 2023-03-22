@@ -42,7 +42,7 @@ class Geode < Thor
                         desc:    'Remove the slash commands in the server with the given ID, or global for global commands, except the ones defined in app/slash'
   def start
     # Validate that only one of the first three options is given
-    if options.reject{ |k, _v| k == :add_slash || k == :remove_slash }.count { |_k, v| v } > 1
+    if options.reject{ |k, _v| k == 'add_slash' || k == 'remove_slash' }.count { |_k, v| v } > 1
       raise Error, 'ERROR: Only one of -d, -a and --load-only can be given'
     end
     # Validate that if remove-slash is given it is a number or 'global'
