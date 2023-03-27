@@ -101,8 +101,7 @@ class Geode < Thor
   option :without_models,   type:    :boolean,
                             desc:    'Generate a crystal without database model classes (crystal generation only)'
   option :desc,             type:    :string,
-                            desc:    'Generate a slash command with the given description (slash command generation only)',
-                            default: 'Enter description here'
+                            desc:    'Generate a slash command with the given description (slash command generation only)'
   option :server_id,        type:    :numeric,
                             desc:    'Generate a slash command with the given server ID (slash command generation only)'
   option :singleton,        type:    :boolean,
@@ -138,7 +137,7 @@ class Geode < Thor
       # Generate slash command
       generator = Generators::SlashGenerator.new(
         args[0],
-        description: options[:desc],
+        description: options[:desc] || 'Enter description here',
         server_id: options[:server_id]
       )
       generator.generate_in('app/slash')
