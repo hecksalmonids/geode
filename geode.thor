@@ -332,7 +332,7 @@ class Geode < Thor
       # Load the database
       Sequel.sqlite(Config.config.db_path) do |db|
         # If model's table exists in the database, generate new migration dropping the model's table
-        if db.table_exist?(table_name.to_sym)
+        if db.table_exists?(table_name.to_sym)
           generator = Generators::ModelDestroyMigrationGenerator.new(model_name, db, singleton)
           generator.generate_in('db/migrations')
 
@@ -558,7 +558,7 @@ class Database < Thor
         options[:tables].each do |table_name|
           raise Error, 'ERROR: Table schema_migrations cannot be reset' if table_name == 'schema_migrations'
 
-          if db.table_exist?(table_name.to_sym)
+          if db.table_exists?(table_name.to_sym)
             dependent_tables = db.tables.select do |key|
               db.foreign_key_list(key).any? { |fk| fk[:table] == table_name.to_sym }
             end
