@@ -232,10 +232,10 @@ class Geode < Thor
       puts "= Renamed crystal #{old_name} to #{new_name} at #{new_path}"
 
     when 'model'
-      old_path = if File.exists? "app/models/#{old_name.underscore}.rb"
+      old_path = if File.exist? "app/models/#{old_name.underscore}.rb"
                    singleton = false
                    "app/models/#{old_name.underscore}.rb"
-                 elsif File.exists? "app/models/#{old_name.underscore}_singleton.rb"
+                 elsif File.exist? "app/models/#{old_name.underscore}_singleton.rb"
                    singleton = true
                    "app/models/#{old_name.underscore}_singleton.rb"
                  end
@@ -312,10 +312,10 @@ class Geode < Thor
       raise Error, 'ERROR: Only one model can be deleted at a time' unless args.size == 1
 
       model_name = args[0]
-      model_path = if File.exists? "app/models/#{model_name.underscore}.rb"
+      model_path = if File.exist? "app/models/#{model_name.underscore}.rb"
                    singleton = false
                    "app/models/#{model_name.underscore}.rb"
-                 elsif File.exists? "app/models/#{model_name.underscore}_singleton.rb"
+                 elsif File.exist? "app/models/#{model_name.underscore}_singleton.rb"
                    singleton = true
                    "app/models/#{model_name.underscore}_singleton.rb"
                  end
@@ -332,7 +332,7 @@ class Geode < Thor
       # Load the database
       Sequel.sqlite(config.db_path) do |db|
         # If model's table exists in the database, generate new migration dropping the model's table
-        if db.table_exists?(table_name.to_sym)
+        if db.table_exist?(table_name.to_sym)
           generator = Generators::ModelDestroyMigrationGenerator.new(model_name, db, singleton)
           generator.generate_in('db/migrations')
 
@@ -521,9 +521,9 @@ class Database < Thor
     if options[:load_only]
       options[:load_only].each do |model_name|
         model_paths = Array.new
-        if File.exists?(path = "app/models/#{model_name.underscore}.rb")
+        if File.exist?(path = "app/models/#{model_name.underscore}.rb")
           model_paths.push(path)
-        elsif File.exists?(path = "app/models/#{model_name.underscore}_singleton.rb")
+        elsif File.exist?(path = "app/models/#{model_name.underscore}_singleton.rb")
           model_paths.push(path)
         else
           raise Error, "ERROR: Model #{model_name} not found"
@@ -558,7 +558,7 @@ class Database < Thor
         options[:tables].each do |table_name|
           raise Error, 'ERROR: Table schema_migrations cannot be reset' if table_name == 'schema_migrations'
 
-          if db.table_exists?(table_name.to_sym)
+          if db.table_exist?(table_name.to_sym)
             dependent_tables = db.tables.select do |key|
               db.foreign_key_list(key).any? { |fk| fk[:table] == table_name.to_sym }
             end

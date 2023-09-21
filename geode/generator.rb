@@ -34,7 +34,7 @@ module Generators
     def generate_in(directory)
       crystal_path = File.expand_path("#{directory}/#{@filename}")
       path = File.dirname(crystal_path)
-      FileUtils.mkdir_p(path) unless Dir.exists?(path)
+      FileUtils.mkdir_p(path) unless Dir.exist?(path)
       File.open(crystal_path, 'w') { |f| f.write(render 'geode/templates/crystal_generate_template.erb') }
       relative_crystal_path = Pathname.new(crystal_path).relative_path_from(Pathname.pwd).to_s
       puts "+ Generated crystal #{@crystal_name} at #{relative_crystal_path}"
