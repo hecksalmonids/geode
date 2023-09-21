@@ -26,7 +26,8 @@ if Config.models_to_load
     end
 
     load path
-    if (filename = File.basename(path, '.*').end_with?('singleton'))
+    filename = File.basename(path, '.*')
+    if filename.end_with?('singleton')
       puts "+ Loaded singleton model class #{filename[0..-11].camelize}"
     else
       puts "+ Loaded model class #{filename.camelize}"
