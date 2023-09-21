@@ -330,7 +330,7 @@ class Geode < Thor
       puts "- Deleted model file for model #{model_name}"
 
       # Load the database
-      Sequel.sqlite(config.db_path) do |db|
+      Sequel.sqlite(Config.config.db_path) do |db|
         # If model's table exists in the database, generate new migration dropping the model's table
         if db.table_exist?(table_name.to_sym)
           generator = Generators::ModelDestroyMigrationGenerator.new(model_name, db, singleton)
@@ -409,7 +409,7 @@ class Database < Thor
                    desc:    'Check the current status of migrations'
   def migrate
     # Load the database
-    Sequel.sqlite(config.db_path) do |db|
+    Sequel.sqlite(Config.config.db_path) do |db|
       # Validate that both version and status are not given at the same time
       raise Error, 'ERROR: Only one of --version, -s can be given at a time' if options[:version] && options[:status]
 
@@ -474,7 +474,7 @@ class Database < Thor
                 desc: 'Revert the given number of migrations'
   def rollback
     # Load the database
-    Sequel.sqlite(config.db_path) do |db|
+    Sequel.sqlite(Config.config.db_path) do |db|
       # Validate that the steps to rollback is not greater than the completed migrations
       if options[:step]
         migration_count = db[:schema_migrations].count
@@ -551,7 +551,7 @@ class Database < Thor
                   desc: 'Reset only the given tables'
   def reset
     # Load the database
-    Sequel.sqlite(config.db_path) do |db|
+    Sequel.sqlite(Config.config.db_path) do |db|
       # Validate that if tables option is given, all given tables exist, none of them are schema_migrations, and
       # either have no dependent tables or all dependent tables are included in the arguments
       if options[:tables]
