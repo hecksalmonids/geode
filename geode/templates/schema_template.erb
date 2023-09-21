@@ -3,7 +3,7 @@
 require 'sequel'
 
 module Schema
-  Sequel.sqlite(ENV['DB_PATH']) do |db|
+  Sequel.sqlite(Config.db_path) do |db|
 <%= @tables.join("\n\n") %>
   end
 end
